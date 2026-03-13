@@ -1,3 +1,4 @@
+using System.Linq;
 using Godot;
 using MegaCrit.Sts2.Core.Nodes.HoverTips;
 using MegaCrit.Sts2.addons.mega_text;
@@ -14,6 +15,8 @@ internal static class HoverStatsTooltipRenderer
 
     private const float TipSpacing = 5f;
 
+    private const int ContentFontSize = 14;
+
     private static readonly Color LabelColor = new(0.92f, 0.90f, 0.84f, 1.0f);
 
     private static readonly Color MutedColor = new(0.68f, 0.72f, 0.80f, 1.0f);
@@ -23,6 +26,14 @@ internal static class HoverStatsTooltipRenderer
     private static readonly Color TrackColor = new(0.21f, 0.23f, 0.29f, 0.95f);
 
     private static readonly Color KnobOutlineColor = new(0.05f, 0.06f, 0.08f, 0.45f);
+
+    private static readonly Color HeroCardBackground = new(0.14f, 0.16f, 0.20f, 0.96f);
+
+    private static readonly Color StandardCardBackground = new(0.11f, 0.13f, 0.17f, 0.92f);
+
+    private static readonly Color NoteCardBackground = new(0.11f, 0.13f, 0.17f, 0.70f);
+
+    private static readonly Color HeroLabelColor = new(0.78f, 0.82f, 0.90f, 1.0f);
 
     public static bool TryApply(NHoverTipSet hoverTipSet, HoverStatsTipPayload payload)
     {
@@ -62,8 +73,7 @@ internal static class HoverStatsTooltipRenderer
             }
 
             textContainer.QueueSort();
-            tipRoot.ResetSize();
-            ResizeTextContainer(textContainer);
+            RefreshTextContainerSize(textContainer);
             return true;
         }
 
@@ -73,31 +83,58 @@ internal static class HoverStatsTooltipRenderer
     private static Control BuildContent(HoverStatsTipPayload payload)
     {
         float contentWidth = GetContentWidth();
+        List<HoverStatsValueRow> heroRows = payload.ValueRows
+            .Where(static row => row.Style == HoverStatsValueStyle.Hero)
+            .ToList();
+        List<HoverStatsValueRow> standardRows = payload.ValueRows
+            .Where(static row => row.Style == HoverStatsValueStyle.Standard)
+            .ToList();
+        List<HoverStatsValueRow> metaRows = payload.ValueRows
+            .Where(static row => row.Style == HoverStatsValueStyle.Meta)
+            .ToList();
+
         VBoxContainer root = new()
         {
             MouseFilter = Control.MouseFilterEnum.Ignore,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(contentWidth, 0f)
         };
-        root.AddThemeConstantOverride("separation", 6);
+        root.AddThemeConstantOverride("separation", 8);
 
-        foreach (HoverStatsValueRow row in payload.ValueRows)
+        bool hasSection = false;
+        if (heroRows.Count > 0)
         {
-            root.AddChild(BuildValueRow(row));
+            root.AddChild(BuildValueGrid(heroRows, contentWidth, emphasize: true));
+            hasSection = true;
         }
 
-        foreach (HoverStatsBarRow row in payload.BarRows)
+        if (standardRows.Count > 0)
         {
-            root.AddChild(BuildBarRow(row));
+            AddDividerIfNeeded(root, ref hasSection);
+            root.AddChild(BuildValueGrid(standardRows, contentWidth, emphasize: false));
+        }
+
+        if (payload.BarRows.Count > 0)
+        {
+            AddDividerIfNeeded(root, ref hasSection);
+            foreach (HoverStatsBarRow row in payload.BarRows)
+            {
+                root.AddChild(BuildBarRow(row));
+            }
+        }
+
+        if (metaRows.Count > 0)
+        {
+            AddDividerIfNeeded(root, ref hasSection);
+            foreach (HoverStatsValueRow row in metaRows)
+            {
+                root.AddChild(BuildMetaRow(row));
+            }
         }
 
         if (payload.NoteRows.Count > 0)
         {
-            if (payload.ValueRows.Count > 0 || payload.BarRows.Count > 0)
-            {
-                root.AddChild(BuildDivider());
-            }
-
+            AddDividerIfNeeded(root, ref hasSection);
             foreach (HoverStatsNoteRow noteRow in payload.NoteRows)
             {
                 root.AddChild(BuildNoteRow(noteRow, contentWidth));
@@ -107,28 +144,67 @@ internal static class HoverStatsTooltipRenderer
         return root;
     }
 
-    private static Control BuildValueRow(HoverStatsValueRow row)
+    private static void AddDividerIfNeeded(VBoxContainer root, ref bool hasSection)
     {
-        HBoxContainer container = new()
+        if (!hasSection)
+        {
+            hasSection = true;
+            return;
+        }
+
+        root.AddChild(BuildDivider());
+    }
+
+    private static Control BuildValueGrid(IReadOnlyList<HoverStatsValueRow> rows, float width, bool emphasize)
+    {
+        GridContainer grid = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(width, 0f),
+            Columns = rows.Count <= 1 ? 1 : 2
+        };
+        grid.AddThemeConstantOverride("h_separation", emphasize ? 8 : 6);
+        grid.AddThemeConstantOverride("v_separation", emphasize ? 8 : 6);
+
+        foreach (HoverStatsValueRow row in rows)
+        {
+            grid.AddChild(BuildValueCard(row, emphasize));
+        }
+
+        return grid;
+    }
+
+    private static Control BuildValueCard(HoverStatsValueRow row, bool emphasize)
+    {
+        Color accentColor = GetAccentColorValue(row.AccentPercent);
+        PanelContainer card = CreatePanel(emphasize ? HeroCardBackground : StandardCardBackground, accentColor, emphasize ? 0.60f : 0.32f, emphasize ? 10 : 8);
+        card.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+        MarginContainer body = CreateMargin(emphasize ? 10 : 8, emphasize ? 9 : 7);
+
+        VBoxContainer stack = new()
         {
             MouseFilter = Control.MouseFilterEnum.Ignore,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
         };
-        container.AddThemeConstantOverride("separation", 8);
+        stack.AddThemeConstantOverride("separation", emphasize ? 4 : 3);
 
-        Label label = CreateLabel(row.Label);
-        label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        Label label = CreateCaptionLabel(row.Label, emphasize ? HeroLabelColor : MutedColor);
+        Control value = CreateRichValue(row.Value, accentColor, alignRight: !emphasize, bold: row.Style == HoverStatsValueStyle.Hero);
 
-        Label value = CreateValueLabel(row.Value, GetAccentColorValue(row.AccentPercent));
-        value.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
-
-        container.AddChild(label);
-        container.AddChild(value);
-        return container;
+        stack.AddChild(label);
+        stack.AddChild(value);
+        body.AddChild(stack);
+        card.AddChild(body);
+        return card;
     }
 
     private static Control BuildBarRow(HoverStatsBarRow row)
     {
+        PanelContainer panel = CreatePanel(StandardCardBackground, GetAccentColorValue(row.Percent), 0.28f, 8);
+        MarginContainer body = CreateMargin(8, 8);
+
         VBoxContainer container = new()
         {
             MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -160,19 +236,47 @@ internal static class HoverStatsTooltipRenderer
         header.AddChild(detail);
         container.AddChild(header);
         container.AddChild(bar);
+        body.AddChild(container);
+        panel.AddChild(body);
+        return panel;
+    }
+
+    private static Control BuildMetaRow(HoverStatsValueRow row)
+    {
+        HBoxContainer container = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
+        container.AddThemeConstantOverride("separation", 8);
+
+        Label label = CreateCaptionLabel(row.Label, MutedColor);
+        label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+        Label value = CreateValueLabel(row.Value, MutedColor, minimumWidth: 0f);
+        value.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
+
+        container.AddChild(label);
+        container.AddChild(value);
         return container;
     }
 
     private static Control BuildNoteRow(HoverStatsNoteRow noteRow, float width)
     {
-        string color = noteRow.Tone switch
+        Color color = noteRow.Tone switch
         {
-            HoverStatsNoteTone.Warning => "#F2B15D",
-            HoverStatsNoteTone.Info => "#8BC6FF",
-            _ => "#AEB7C6"
+            HoverStatsNoteTone.Warning => Color.FromHtml("#F2B15D"),
+            HoverStatsNoteTone.Info => Color.FromHtml("#8BC6FF"),
+            _ => Color.FromHtml("#AEB7C6")
         };
 
-        return CreateNoteLabel(noteRow.Text, Color.FromHtml(color), width);
+        PanelContainer panel = CreatePanel(NoteCardBackground, color, 0.24f, 8);
+        panel.CustomMinimumSize = new Vector2(width, 0f);
+
+        MarginContainer body = CreateMargin(8, 8);
+        body.AddChild(CreateNoteLabel(noteRow.Text, color, width));
+        panel.AddChild(body);
+        return panel;
     }
 
     private static Control BuildDivider()
@@ -197,10 +301,11 @@ internal static class HoverStatsTooltipRenderer
             VerticalAlignment = VerticalAlignment.Center
         };
         label.AddThemeColorOverride("font_color", LabelColor);
+        label.AddThemeFontSizeOverride("font_size", ContentFontSize);
         return label;
     }
 
-    private static Label CreateValueLabel(string text, Color color)
+    private static Label CreateValueLabel(string text, Color color, float minimumWidth = 96f)
     {
         Label label = new()
         {
@@ -209,9 +314,24 @@ internal static class HoverStatsTooltipRenderer
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Text = text,
-            CustomMinimumSize = new Vector2(96f, 0f)
+            CustomMinimumSize = new Vector2(minimumWidth, 0f)
         };
         label.AddThemeColorOverride("font_color", color);
+        label.AddThemeFontSizeOverride("font_size", ContentFontSize);
+        return label;
+    }
+
+    private static Label CreateCaptionLabel(string text, Color color)
+    {
+        Label label = new()
+        {
+            Text = text,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        label.AddThemeColorOverride("font_color", color);
+        label.AddThemeFontSizeOverride("font_size", ContentFontSize);
         return label;
     }
 
@@ -228,33 +348,77 @@ internal static class HoverStatsTooltipRenderer
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
         };
         label.AddThemeColorOverride("font_color", color);
+        label.AddThemeFontSizeOverride("font_size", ContentFontSize);
         return label;
     }
 
-    private static void ResizeTextContainer(VFlowContainer textContainer)
+    private static Control CreateRichValue(string text, Color color, bool alignRight, bool bold)
     {
-        float totalHeight = 0f;
-        int visibleCount = 0;
-        foreach (Node node in textContainer.GetChildren())
+        string escapedText = EscapeBbCode(text);
+        RichTextLabel label = new()
         {
-            if (node is not Control control || !control.Visible)
-            {
-                continue;
-            }
+            BbcodeEnabled = true,
+            FitContent = true,
+            ScrollActive = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            AutowrapMode = TextServer.AutowrapMode.Off,
+            Text = bold ? $"[b]{escapedText}[/b]" : escapedText,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
+        label.AddThemeColorOverride("default_color", color);
+        label.AddThemeFontSizeOverride("normal_font_size", ContentFontSize);
+        label.HorizontalAlignment = alignRight ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        return label;
+    }
 
-            control.ResetSize();
-            totalHeight += Math.Max(control.Size.Y, control.GetCombinedMinimumSize().Y);
-            visibleCount += 1;
-        }
+    private static PanelContainer CreatePanel(Color background, Color accentColor, float borderAlpha, int radius)
+    {
+        StyleBoxFlat style = new()
+        {
+            BgColor = background,
+            BorderColor = new Color(accentColor.R, accentColor.G, accentColor.B, borderAlpha)
+        };
+        style.SetBorderWidthAll(1);
+        style.SetCornerRadiusAll(radius);
 
-        float width = Math.Max(textContainer.Size.X, Math.Max(360f, ModEntry.Config.PanelWidth + 40f));
-        float height = totalHeight + Math.Max(0, visibleCount - 1) * TipSpacing;
-        textContainer.Size = new Vector2(width, height);
+        PanelContainer panel = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
+        panel.AddThemeStyleboxOverride("panel", style);
+        return panel;
+    }
+
+    private static MarginContainer CreateMargin(int horizontal, int vertical)
+    {
+        MarginContainer container = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
+        container.AddThemeConstantOverride("margin_left", horizontal);
+        container.AddThemeConstantOverride("margin_right", horizontal);
+        container.AddThemeConstantOverride("margin_top", vertical);
+        container.AddThemeConstantOverride("margin_bottom", vertical);
+        return container;
     }
 
     private static float GetContentWidth()
     {
-        return Math.Clamp(ModEntry.Config.PanelWidth - 68f, 180f, 360f);
+        return Math.Clamp(ModEntry.Config.PanelWidth - 24f, 220f, 360f);
+    }
+
+    private static void RefreshTextContainerSize(VFlowContainer textContainer)
+    {
+        textContainer.ResetSize();
+
+        Vector2 minSize = textContainer.GetCombinedMinimumSize();
+        if (minSize.X <= 0f || minSize.Y <= 0f)
+        {
+            return;
+        }
+
+        textContainer.Size = minSize;
     }
 
     private static bool MatchesDescription(string actualText, HoverStatsTipPayload payload)
@@ -281,6 +445,13 @@ internal static class HoverStatsTooltipRenderer
     private static string Normalize(string text)
     {
         return (text ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
+    }
+
+    private static string EscapeBbCode(string text)
+    {
+        return (text ?? string.Empty)
+            .Replace("[", "[lb]", StringComparison.Ordinal)
+            .Replace("]", "[rb]", StringComparison.Ordinal);
     }
 
     private static Color GetAccentColorValue(double? percent)

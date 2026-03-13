@@ -78,20 +78,20 @@ internal static class HoverStatsTipBuilder
         CategoryRelativeStats? relative = lookup.RelativeStats;
         List<HoverStatsValueRow> valueRows = new()
         {
-            new HoverStatsValueRow(ui.WinRate, Percent(stats.WinRate), relative?.WinRatePercent),
-            new HoverStatsValueRow(ui.PickRate, Percent(stats.PickRate), relative?.PickRatePercent)
+            new HoverStatsValueRow(ui.WinRate, Percent(stats.WinRate), relative?.WinRatePercent, HoverStatsValueStyle.Hero),
+            new HoverStatsValueRow(ui.PickRate, Percent(stats.PickRate), relative?.PickRatePercent, HoverStatsValueStyle.Hero)
         };
 
         if (ModEntry.Config.ShowSkipRate)
         {
-            valueRows.Add(new HoverStatsValueRow(ui.SkipRate, Percent(stats.SkipRate), null));
+            valueRows.Add(new HoverStatsValueRow(ui.SkipRate, Percent(stats.SkipRate), null, HoverStatsValueStyle.Hero));
         }
 
         if (ModEntry.Config.ShowCounts)
         {
-            valueRows.Add(new HoverStatsValueRow(ui.TimesPicked, Count(stats.TimesPicked), null));
-            valueRows.Add(new HoverStatsValueRow(ui.TimesWon, Count(stats.TimesWon), null));
-            valueRows.Add(new HoverStatsValueRow(ui.TimesLost, Count(stats.TimesLost), null));
+            valueRows.Add(new HoverStatsValueRow(ui.TimesPicked, Count(stats.TimesPicked), null, HoverStatsValueStyle.Standard));
+            valueRows.Add(new HoverStatsValueRow(ui.TimesWon, Count(stats.TimesWon), null, HoverStatsValueStyle.Standard));
+            valueRows.Add(new HoverStatsValueRow(ui.TimesLost, Count(stats.TimesLost), null, HoverStatsValueStyle.Standard));
         }
 
         List<HoverStatsBarRow> barRows = new();
@@ -106,7 +106,7 @@ internal static class HoverStatsTipBuilder
             ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(updated))
         {
-            valueRows.Add(new HoverStatsValueRow(ui.UpdatedAt, updated, null));
+            valueRows.Add(new HoverStatsValueRow(ui.UpdatedAt, updated, null, HoverStatsValueStyle.Meta));
         }
 
         List<HoverStatsNoteRow> noteRows = new();
@@ -194,7 +194,15 @@ internal static class HoverStatsTipBuilder
 
     private static string FormatRichValueRow(HoverStatsValueRow row)
     {
-        return $"{EscapeBbCode(row.Label)}: {Colorize(row.Value, row.AccentPercent)}";
+        string label = EscapeBbCode(row.Label);
+        string value = row.Style switch
+        {
+            HoverStatsValueStyle.Hero => Colorize(row.Value, row.AccentPercent),
+            HoverStatsValueStyle.Meta => WrapColor(EscapeBbCode(row.Value), "#AEB7C6"),
+            _ when row.AccentPercent.HasValue => Colorize(row.Value, row.AccentPercent),
+            _ => EscapeBbCode(row.Value)
+        };
+        return $"{label}: {value}";
     }
 
     private static string FormatPlainBarRow(HoverStatsBarRow row)
@@ -220,6 +228,11 @@ internal static class HoverStatsTipBuilder
     private static string WrapColor(string text, string color)
     {
         return $"[color={color}]{text}[/color]";
+    }
+
+    private static string Bold(string text)
+    {
+        return $"[b]{text}[/b]";
     }
 
     private static string EscapeBbCode(string text)
@@ -286,11 +299,18 @@ internal sealed record HoverStatsTipPayload(
     IReadOnlyList<HoverStatsBarRow> BarRows,
     IReadOnlyList<HoverStatsNoteRow> NoteRows);
 
-internal sealed record HoverStatsValueRow(string Label, string Value, double? AccentPercent);
+internal sealed record HoverStatsValueRow(string Label, string Value, double? AccentPercent, HoverStatsValueStyle Style);
 
 internal sealed record HoverStatsBarRow(string Label, double Percent, string Detail);
 
 internal sealed record HoverStatsNoteRow(string Text, HoverStatsNoteTone Tone);
+
+internal enum HoverStatsValueStyle
+{
+    Hero,
+    Standard,
+    Meta
+}
 
 internal enum HoverStatsNoteTone
 {
