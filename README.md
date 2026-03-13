@@ -99,7 +99,7 @@
 ## 用户量曲线
 
 <p align="center">
-  <img src="https://xmeowchan.github.io/STS2_Card_Stats/users-history.svg" alt="STS2 Mod 用户量曲线" width="100%">
+  <img src="https://xmeowchan.github.io/STS2_Card_Stats/users-history.svg?v=16710ce" alt="STS2 Mod 用户量曲线" width="100%">
 </p>
 
 > 这条曲线来自 Mod 的匿名日心跳：每个安装实例每天最多上报一次，只统计随机安装 ID，不采集 Steam 账号、用户名或硬件指纹。
