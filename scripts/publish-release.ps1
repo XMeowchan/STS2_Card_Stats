@@ -196,7 +196,7 @@ function Ensure-ReleaseViaApi {
     )
 
     $headers = Get-ReleaseHeaders -Token $Token
-    $notes = Get-Content -LiteralPath $NotesFile -Raw
+    $notes = [string](Get-Content -LiteralPath $NotesFile -Raw)
     $existing = Get-ReleaseByTagViaApi -Repository $Repository -TagName $TagName -Token $Token
     if ($existing) {
         $body = @{
