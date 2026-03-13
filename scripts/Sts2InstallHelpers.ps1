@@ -250,3 +250,31 @@ function Write-EffectiveModConfig {
     $json = $config | ConvertTo-Json -Depth 8
     Set-Content -LiteralPath $DestinationPath -Value $json -Encoding UTF8
 }
+
+function Set-PckCompatibilityHeader {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [int]$EngineMinorVersion = 5
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "PCK file not found: $Path"
+    }
+
+    [byte[]]$pckBytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($pckBytes.Length -lt 16) {
+        throw "PCK header too small."
+    }
+
+    # Offsets 8-15 store the Godot engine version tuple. STS2 currently accepts 4.5.x packs.
+    $pckBytes[8] = 4
+    $pckBytes[9] = 0
+    $pckBytes[10] = 0
+    $pckBytes[11] = 0
+    $pckBytes[12] = [byte]$EngineMinorVersion
+    $pckBytes[13] = 0
+    $pckBytes[14] = 0
+    $pckBytes[15] = 0
+    [System.IO.File]::WriteAllBytes($Path, $pckBytes)
+}

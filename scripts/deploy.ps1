@@ -66,15 +66,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Godot pck build failed."
 }
 
-[byte[]]$pckBytes = [System.IO.File]::ReadAllBytes($pckPath)
-if ($pckBytes.Length -lt 16) {
-    throw "PCK header too small."
-}
-$pckBytes[12] = 5
-$pckBytes[13] = 0
-$pckBytes[14] = 0
-$pckBytes[15] = 0
-[System.IO.File]::WriteAllBytes($pckPath, $pckBytes)
+Set-PckCompatibilityHeader -Path $pckPath -EngineMinorVersion 5
 
 Copy-Item $dllPath (Join-Path $modDir "$modId.dll") -Force
 Copy-Item $pckPath (Join-Path $modDir "$modId.pck") -Force

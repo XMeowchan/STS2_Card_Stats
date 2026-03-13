@@ -172,7 +172,7 @@ internal sealed class CardStatsRepository
         {
             using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(_config.RemoteTimeoutSeconds));
             using HttpRequestMessage request = new(HttpMethod.Get, _config.RemoteDataUrl);
-            request.Headers.UserAgent.ParseAdd("HeyboxCardStatsOverlay/0.2.1");
+            request.Headers.UserAgent.ParseAdd("HeyboxCardStatsOverlay/0.2.2");
 
             using HttpResponseMessage response = await SharedHttpClient.SendAsync(
                 request,

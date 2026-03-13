@@ -25,6 +25,8 @@ foreach ($artifactPath in $requiredArtifacts) {
     }
 }
 
+Set-PckCompatibilityHeader -Path (Join-Path $buildOut "$modId.pck") -EngineMinorVersion 5
+
 if (Test-Path -LiteralPath $stagedModDir) {
     Remove-Item -LiteralPath $stagedModDir -Recurse -Force
 }
