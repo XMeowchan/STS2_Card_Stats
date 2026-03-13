@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>XHH STS2 Collector Fallback</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        margin: 24px;
+        color: #111827;
+      }
+
+      main {
+        max-width: 720px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      input,
+      select {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        margin-top: 6px;
+        padding: 8px 10px;
+      }
+
+      .checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .checkbox input {
+        width: auto;
+        margin-top: 0;
+      }
+
+      button {
+        padding: 10px 16px;
+      }
+
+      #status {
+        margin-top: 12px;
+        color: #166534;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>XHH STS2 Collector Fallback</h1>
+      <p>点击扩展图标后，扩展会在真实浏览器页面环境内抓取小黑盒卡牌数据。</p>
+      <form id="settings-form">
+        <label>
+          Output mode
+          <select id="outputMode">
+            <option value="upload">Upload to localhost receiver</option>
+            <option value="download">Download JSON directly</option>
+          </select>
+        </label>
+
+        <label>
+          Upload URL
+          <input id="uploadUrl" type="url" placeholder="http://127.0.0.1:8765/upload">
+        </label>
+
+        <label>
+          Categories (comma separated, optional)
+          <input id="categories" type="text" placeholder="ironclad,silent">
+        </label>
+
+        <label>
+          Detail limit (optional)
+          <input id="detailLimit" type="number" min="1" placeholder="leave empty for full sync">
+        </label>
+
+        <label class="checkbox">
+          <input id="withDetails" type="checkbox">
+          Fetch card detail records
+        </label>
+
+        <label class="checkbox">
+          <input id="autoCloseTab" type="checkbox">
+          Close collector tab after export
+        </label>
+
+        <button type="submit">Save</button>
+        <p id="status"></p>
+      </form>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+﻿; Engine configuration file.
+; Minimal Godot project used only to pack static mod assets into a .pck file.
+
+config_version=5
+
+[application]
+config/name="HeyboxCardStatsOverlay Pack Builder"
+run/main_scene=""
+config/features=PackedStringArray("4.6")
+
+[rendering]
+renderer/rendering_method="mobile"

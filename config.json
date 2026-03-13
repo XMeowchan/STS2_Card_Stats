@@ -1,0 +1,13 @@
+﻿{
+  "enabled": true,
+  "data_file": "cards.json",
+  "label_language": "auto",
+  "panel_width": 300,
+  "show_counts": true,
+  "show_ranks": true,
+  "show_skip_rate": true,
+  "remote_data_enabled": true,
+  "remote_data_url": "https://xmeowchan.github.io/STS2_Card_Stats/cards.json",
+  "remote_refresh_minutes": 180,
+  "remote_timeout_seconds": 5
+}

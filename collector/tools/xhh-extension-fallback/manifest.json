@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "XHH STS2 Collector Fallback",
+  "description": "Fallback exporter for Slay the Spire 2 card stats using a real logged-in XiaoHeiHe browser session.",
+  "version": "0.1.0",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://www.xiaoheihe.cn/*",
+    "https://api.xiaoheihe.cn/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.xiaoheihe.cn/*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Run XHH STS2 collector"
+  }
+}

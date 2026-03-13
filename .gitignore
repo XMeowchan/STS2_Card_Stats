@@ -1,0 +1,8 @@
+dist/
+src/bin/
+src/obj/
+collector/node_modules/
+collector/public/
+syncer/node_modules/
+*.user
+*.suo

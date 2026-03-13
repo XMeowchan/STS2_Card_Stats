@@ -1,0 +1,12 @@
+﻿{
+  "name": "sts2-xiaoheihe-syncer",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "sync-cards": "node ./sync-cards.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.54.2"
+  }
+}

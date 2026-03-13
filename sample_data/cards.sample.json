@@ -1,0 +1,42 @@
+﻿{
+  "source": "sample",
+  "game": "slay_the_spire_2",
+  "updated_at": "2026-03-12T10:25:00Z",
+  "categories": [
+    "ironclad",
+    "silent",
+    "regent",
+    "necrobinder",
+    "defect",
+    "colorless",
+    "ancient",
+    "else"
+  ],
+  "cards": [
+    {
+      "id": "Offering",
+      "alt_ids": ["Offering"],
+      "name_cn": "祭品",
+      "name_en": "Offering",
+      "category": "ironclad",
+      "type": "skill",
+      "rarity": "rare",
+      "cost": 0,
+      "icon_url": "https://heyboxbj.max-c.com/slay_the_spire_2/cards/ironclad_offering.png",
+      "updated_at": "2026-03-12T10:25:00Z",
+      "stats": {
+        "win_rate": 64.5,
+        "pick_rate": 62.4,
+        "skip_rate": 37.6,
+        "times_won": 79275,
+        "times_lost": 43574,
+        "times_picked": 108556,
+        "times_skipped": 65527,
+        "win_rate_rank": 83,
+        "pick_rate_rank": 10
+      },
+      "desc": "失去6点生命。获得2点能量。抽3张牌。",
+      "upgrade_desc": "失去6点生命。获得2点能量。抽5张牌。"
+    }
+  ]
+}
