@@ -27,15 +27,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 9.0.x
-
       - name: Validate local toolchain
         shell: pwsh
         run: |
           if (-not (Get-Command powershell -ErrorAction SilentlyContinue)) { throw "PowerShell is required." }
+          $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+          if (-not $dotnet -and -not (Test-Path (Join-Path $env:USERPROFILE ".dotnet\dotnet.exe"))) {
+            throw ".NET SDK is required on the self-hosted runner."
+          }
           $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
           if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) is required on the self-hosted runner." }
           $godot = (Get-Command godot -ErrorAction SilentlyContinue)
