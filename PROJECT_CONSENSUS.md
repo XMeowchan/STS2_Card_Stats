@@ -179,6 +179,7 @@
 - 同步数据并提交：`powershell -ExecutionPolicy Bypass -File .\scripts\update-card-data.ps1`
 - 构建安装器：`powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1`
 - 构建便携包：`powershell -ExecutionPolicy Bypass -File .\scripts\build-portable-package.ps1`
+- 本地发版打包 / 上传辅助：`powershell -ExecutionPolicy Bypass -File .\scripts\publish-release.ps1`
 - 启动游戏前先同步：`powershell -ExecutionPolicy Bypass -File .\scripts\launch-with-sync.ps1`
 
 ### 8.3 PCK 兼容性
@@ -211,6 +212,56 @@
 结论：
 
 - 如果要维持自动更新能力，release 里必须持续提供可识别的 portable zip。
+
+#### 8.5.1 发布侧 POST / 上传流程
+
+- 自动更新依赖的不是安装器 `.exe`，而是 GitHub Release 里的 portable zip。
+- 当前推荐发布入口是 `scripts/publish-release.ps1`。
+- 这个脚本会先构建：
+  - `HeyboxCardStatsOverlay-Setup-x.y.z.exe`
+  - `HeyboxCardStatsOverlay-portable-x.y.z.zip`
+  - release notes
+- 如果本机装了 `gh`，脚本会用 `gh release create / upload`。
+- 如果没装 `gh`，但环境里有 `GITHUB_TOKEN` / `GH_TOKEN` / `GITHUB_RELEASE_TOKEN`，脚本会直接走 GitHub REST API：
+  1. 读取 `mod_manifest.json` 里的版本号并生成 `v<version>` tag 名。
+  2. `GET /repos/{owner}/{repo}/releases/tags/{tag}` 检查 release 是否已存在。
+  3. 不存在则 `POST /repos/{owner}/{repo}/releases` 创建 release。
+  4. 已存在则 `PATCH /repos/{owner}/{repo}/releases/{id}` 更新标题、正文、prerelease 状态。
+  5. 删除同名旧附件。
+  6. 向 release 的 `upload_url` 重新上传 installer exe 和 portable zip。
+- 对自动更新来说，portable zip 是强依赖；installer exe 主要服务首次安装和手动升级。
+- `.github/workflows/release-self-hosted.yml` 是同一套逻辑的 CI 封装，但依赖 Windows self-hosted runner，因为构建过程要用到本机的 STS2 依赖、Godot 和 Inno Setup。
+
+#### 8.5.2 玩家侧下载 / 替换流程
+
+- 玩家第一次必须手动安装一个带更新器的版本；当前是 `0.2.3` 及以后。
+- Mod 启动时，`src/ModAutoUpdater.cs` 会：
+  1. 读取本地 `mod_manifest.json` 版本。
+  2. 请求 GitHub latest release。
+  3. 从 release 资产里挑选 portable zip。
+  4. 比较远端版本与本地版本。
+- 如果远端更高：
+  1. 把 portable zip 下载到 Mod 目录下的 `_update_runtime/downloads/`。
+  2. 解压到 `_update_runtime/staging/<version>/`。
+  3. 校验解压结果里是否存在有效的 `mod_manifest.json`、`HeyboxCardStatsOverlay.dll`、`HeyboxCardStatsOverlay.pck`。
+  4. 生成并启动一个外部 PowerShell 应用脚本。
+- 之所以要起外部 PowerShell，而不是直接在游戏进程里覆盖，是因为：
+  - 游戏运行时 DLL / PCK 正在被占用；
+  - 直接覆盖很容易失败或把安装目录留在半更新状态。
+- 外部 PowerShell 脚本会：
+  1. 等待游戏主进程退出。
+  2. 把 staging 目录内容复制回 Mod 安装目录。
+  3. 保留玩家现有的 `config.json`，避免把玩家自己的开关和参数覆盖掉。
+  4. 记录 `_update_runtime/last-applied-update.json`。
+  5. 如果失败，则写 `_update_runtime/update-error.log`。
+- 这条链路的验收标准不是“游戏运行中立刻变成新版本”，而是“本次运行完成下载，下次启动前已在退出阶段完成替换”。
+
+#### 8.5.3 不要破坏的约束
+
+- 不要把 release 资产名改成完全不可识别的格式，至少要保留 portable zip 这一类稳定产物。
+- 不要只发 installer exe 而不发 portable zip。
+- 不要让更新器覆盖玩家本地 `config.json`。
+- 不要把“自动更新失败”设计成“Mod 无法启动”；失败时应该退化为继续跑本地已安装版本。
 
 ## 9. 已知坑
 
