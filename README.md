@@ -28,6 +28,12 @@ https://xmeowchan.github.io/STS2_Card_Stats/cards.json
 
 如果你只是更新线上数据，通常不需要重新打安装包。
 
+如果你想一键完成“同步数据 + 本地预览 + 提交 + 推送”，可以直接运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\update-card-data.ps1
+```
+
 只有在下面这些情况里，才建议重新打包并更新 Release：
 
 - 你希望新安装的用户拿到最新离线数据

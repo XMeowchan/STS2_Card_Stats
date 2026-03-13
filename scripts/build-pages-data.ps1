@@ -45,6 +45,7 @@ $sectionUpdate1 = "&#x5148;&#x5728;&#x4ed3;&#x5e93;&#x6839;&#x76ee;&#x5f55;&#x8f
 $sectionUpdate2 = "&#x786e;&#x8ba4; <code>data/cards.json</code>&#x3001;<code>data/cards.fallback.json</code>&#x3001;<code>data/sync_state.json</code> &#x90fd;&#x5df2;&#x5237;&#x65b0;&#x3002;"
 $sectionUpdate3 = "&#x628a;&#x6539;&#x52a8;&#x63d0;&#x4ea4;&#x5e76;&#x63a8;&#x9001;&#x5230; <code>main</code> &#x5206;&#x652f;&#x3002;"
 $sectionUpdate4 = "GitHub Actions &#x4f1a;&#x81ea;&#x52a8;&#x91cd;&#x65b0;&#x53d1;&#x5e03;&#x8fd9;&#x4e2a; Pages &#x7ad9;&#x70b9;&#xff0c;Mod&#x540e;&#x7eed;&#x5c31;&#x4f1a;&#x4ece;&#x65b0;&#x7684; <code>cards.json</code> &#x62c9;&#x53d6;&#x6570;&#x636e;&#x3002;"
+$sectionShortcut = "&#x5982;&#x679c;&#x4f60;&#x60f3;&#x4e00;&#x952e;&#x5b8c;&#x6210;&#x201c;&#x540c;&#x6b65;&#x6570;&#x636e; + &#x672c;&#x5730;&#x9884;&#x89c8; + &#x63d0;&#x4ea4; + &#x63a8;&#x9001;&#x201d;&#xff0c;&#x53ef;&#x4ee5;&#x76f4;&#x63a5;&#x8fd0;&#x884c;&#x4e0b;&#x9762;&#x8fd9;&#x6761;&#x547d;&#x4ee4;&#x3002;"
 $sectionTip = "&#x5982;&#x679c;&#x4f60;&#x53ea;&#x662f;&#x66f4;&#x65b0;&#x7ebf;&#x4e0a;&#x6570;&#x636e;&#xff0c;&#x901a;&#x5e38;&#x4e0d;&#x9700;&#x8981;&#x91cd;&#x65b0;&#x6253;&#x5b89;&#x88c5;&#x5305;&#x3002;&#x53ea;&#x6709;&#x5728;&#x4f60;&#x5e0c;&#x671b;&#x65b0;&#x5b89;&#x88c5;&#x7528;&#x6237;&#x4e5f;&#x62ff;&#x5230;&#x6700;&#x65b0;&#x79bb;&#x7ebf;&#x6570;&#x636e;&#xff0c;&#x6216;&#x8005;Mod&#x4ee3;&#x7801;&#x672c;&#x8eab;&#x53d1;&#x751f;&#x53d8;&#x5316;&#x65f6;&#xff0c;&#x624d;&#x9700;&#x8981;&#x91cd;&#x65b0;&#x6253;&#x5305;&#x5e76;&#x66f4;&#x65b0;Release&#x3002;"
 $sectionRepackTitle = "&#x4ec0;&#x4e48;&#x65f6;&#x5019;&#x9700;&#x8981;&#x91cd;&#x6253;&#x5b89;&#x88c5;&#x5305;"
 $sectionRepack1 = "Mod&#x4ee3;&#x7801;&#x3001;&#x914d;&#x7f6e;&#x9879;&#x3001;&#x754c;&#x9762;&#x5e03;&#x5c40;&#x53d1;&#x751f;&#x53d8;&#x5316;&#x3002;"
@@ -133,6 +134,8 @@ $indexLines = @(
     "git add data/cards.json data/cards.fallback.json data/sync_state.json",
     "git commit -m ""Update card data""",
     "git push origin main</code></pre>",
+    "      <p>$sectionShortcut</p>",
+    "      <pre><code>powershell -ExecutionPolicy Bypass -File .\scripts\update-card-data.ps1</code></pre>",
     "      <div class='tip'>$sectionTip</div>",
     "    </section>",
     "",
