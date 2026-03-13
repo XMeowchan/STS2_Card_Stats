@@ -1,0 +1,67 @@
+name: Release Mod
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Mark the GitHub release as prerelease
+        required: false
+        default: false
+        type: boolean
+      remote_data_url:
+        description: Override remote stats URL for the shipped config
+        required: false
+        default: https://xmeowchan.github.io/STS2_Card_Stats/cards.json
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: [self-hosted, windows, x64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Validate local toolchain
+        shell: pwsh
+        run: |
+          if (-not (Get-Command powershell -ErrorAction SilentlyContinue)) { throw "PowerShell is required." }
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) is required on the self-hosted runner." }
+          $godot = (Get-Command godot -ErrorAction SilentlyContinue)
+          if (-not $godot) {
+            $godot = Get-Command godot4 -ErrorAction SilentlyContinue
+          }
+          if (-not $godot) { throw "Godot is required on the self-hosted runner." }
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $args = @(
+            "-ExecutionPolicy", "Bypass",
+            "-File", ".\scripts\publish-release.ps1",
+            "-Upload"
+          )
+
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            if ("${{ inputs.prerelease }}" -eq "true") {
+              $args += "-Prerelease"
+            }
+            if ("${{ inputs.remote_data_url }}") {
+              $args += @("-RemoteDataUrl", "${{ inputs.remote_data_url }}")
+            }
+          }
+
+          & powershell @args

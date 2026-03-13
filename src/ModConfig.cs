@@ -47,6 +47,15 @@ internal sealed class ModConfig
     [JsonPropertyName("mod_update_timeout_seconds")]
     public int ModUpdateTimeoutSeconds { get; set; } = 15;
 
+    [JsonPropertyName("telemetry_enabled")]
+    public bool TelemetryEnabled { get; set; } = false;
+
+    [JsonPropertyName("telemetry_endpoint")]
+    public string TelemetryEndpoint { get; set; } = string.Empty;
+
+    [JsonPropertyName("telemetry_timeout_seconds")]
+    public int TelemetryTimeoutSeconds { get; set; } = 5;
+
     public static ModConfig Load(string path)
     {
         ModConfig defaults = new ModConfig();
@@ -97,6 +106,8 @@ internal sealed class ModConfig
         RemoteTimeoutSeconds = Math.Clamp(RemoteTimeoutSeconds, 2, 30);
         ModUpdateGithubRepo = (ModUpdateGithubRepo ?? string.Empty).Trim().Trim('/');
         ModUpdateTimeoutSeconds = Math.Clamp(ModUpdateTimeoutSeconds, 5, 60);
+        TelemetryEndpoint = (TelemetryEndpoint ?? string.Empty).Trim();
+        TelemetryTimeoutSeconds = Math.Clamp(TelemetryTimeoutSeconds, 2, 30);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()

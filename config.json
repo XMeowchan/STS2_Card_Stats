@@ -10,7 +10,10 @@
   "remote_data_url": "https://xmeowchan.github.io/STS2_Card_Stats/cards.json",
   "remote_refresh_minutes": 180,
   "remote_timeout_seconds": 5,
-  "mod_update_enabled": false,
+  "mod_update_enabled": true,
   "mod_update_github_repo": "XMeowchan/STS2_Card_Stats",
-  "mod_update_timeout_seconds": 15
+  "mod_update_timeout_seconds": 15,
+  "telemetry_enabled": false,
+  "telemetry_endpoint": "",
+  "telemetry_timeout_seconds": 5
 }

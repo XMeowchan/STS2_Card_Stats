@@ -56,6 +56,11 @@ internal static class HoverTipSetCreateAndShowPatch
 
     private static bool ShouldShowStatsTip(Control owner, NCardHolder? holder)
     {
+        if (owner is NInspectCardScreen || HasAncestor<NInspectCardScreen>(owner))
+        {
+            return false;
+        }
+
         if (HasAncestor<NMerchantCard>(owner)
             || HasAncestor<NMerchantInventory>(owner)
             || HasAncestor<NMerchantRoom>(owner))

@@ -80,6 +80,37 @@ internal static class HoverStatsTooltipRenderer
         return false;
     }
 
+    public static Control CreateStandalonePanel(HoverStatsTipPayload payload)
+    {
+        float contentWidth = GetContentWidth();
+        PanelContainer shell = CreatePanel(new Color(0.07f, 0.09f, 0.12f, 0.94f), new Color(0.36f, 0.45f, 0.58f, 1.0f), 0.42f, 12);
+        shell.MouseFilter = Control.MouseFilterEnum.Ignore;
+        shell.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+        shell.CustomMinimumSize = new Vector2(contentWidth + 24f, 0f);
+
+        MarginContainer body = CreateMargin(12, 12);
+
+        VBoxContainer stack = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(contentWidth, 0f)
+        };
+        stack.AddThemeConstantOverride("separation", 8);
+
+        Label title = CreateCaptionLabel(payload.Title, LabelColor);
+        title.AddThemeFontSizeOverride("font_size", ContentFontSize + 1);
+        stack.AddChild(title);
+        stack.AddChild(BuildDivider());
+        stack.AddChild(BuildContent(payload));
+
+        body.AddChild(stack);
+        shell.AddChild(body);
+        shell.ResetSize();
+        shell.Size = shell.GetCombinedMinimumSize();
+        return shell;
+    }
+
     private static Control BuildContent(HoverStatsTipPayload payload)
     {
         float contentWidth = GetContentWidth();
