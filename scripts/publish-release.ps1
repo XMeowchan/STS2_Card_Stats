@@ -1,6 +1,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$Repo = "XMeowchan/STS2_Card_Stats",
+    [string]$GameDir,
     [string]$RemoteDataUrl,
     [string]$NotesPath,
     [switch]$Upload,
@@ -29,22 +30,22 @@ function New-ReleaseNotes {
         [string]$InstallerName
     )
 
-    $content = @"
-# XiaoHeiHe Card Stats Overlay $Version
+$content = @"
+# Card Stats Insight Overlay $Version
 
 ## Changes
 
-- Fix inspect screen stats panel for full-screen card view.
-- Dock inspect stats on the left side and add a show/hide toggle.
-- Keep inspect stats from stacking while switching cards.
-- Ship built-in mod auto-update support for players on version $Version and later.
+- Add card library sort buttons for pick rate and win rate.
+- Publish anonymous user curve data for the GitHub README.
+- Refresh branding, localization text, and packaged mod metadata.
+- Rework build, portable zip, and installer scripts around one shared artifact pipeline.
 
 ## Assets
 
 - $InstallerName
 - $PortableName
 
-## Auto-update note
+## Install note
 
 - Keep the portable zip attached to this GitHub Release.
 - Players need to manually install version $Version once.
@@ -63,23 +64,46 @@ function Invoke-BuildArtifacts {
         [Parameter(Mandatory)]
         [string]$BuildConfiguration,
         [AllowNull()]
+        [string]$BuildGameDir,
+        [AllowNull()]
         [string]$RemoteUrl
     )
+
+    $buildArgs = @(
+        "-ExecutionPolicy", "Bypass",
+        "-File", (Join-Path $PSScriptRoot "build-mod-artifacts.ps1"),
+        "-Configuration", $BuildConfiguration
+    )
+    if ($BuildGameDir) {
+        $buildArgs += @("-GameDir", $BuildGameDir)
+    }
 
     $portableArgs = @(
         "-ExecutionPolicy", "Bypass",
         "-File", (Join-Path $PSScriptRoot "build-portable-package.ps1"),
-        "-Configuration", $BuildConfiguration
+        "-Configuration", $BuildConfiguration,
+        "-SkipBuild"
     )
     $installerArgs = @(
         "-ExecutionPolicy", "Bypass",
         "-File", (Join-Path $PSScriptRoot "build-installer.ps1"),
-        "-Configuration", $BuildConfiguration
+        "-Configuration", $BuildConfiguration,
+        "-SkipBuild"
     )
+
+    if ($BuildGameDir) {
+        $portableArgs += @("-GameDir", $BuildGameDir)
+        $installerArgs += @("-GameDir", $BuildGameDir)
+    }
 
     if ($RemoteUrl) {
         $portableArgs += @("-RemoteDataUrl", $RemoteUrl)
         $installerArgs += @("-RemoteDataUrl", $RemoteUrl)
+    }
+
+    & powershell @buildArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "build-mod-artifacts failed."
     }
 
     & powershell @portableArgs
@@ -208,7 +232,10 @@ function Remove-ExistingAssetsViaApi {
     $headers = Get-ReleaseHeaders -Token $Token
     foreach ($asset in @($Release.assets)) {
         if ($AssetNames -contains $asset.name) {
-            $deleteUri = "{0}/assets/{1}" -f (($Release.upload_url -split '/assets')[0]), $asset.id
+            $deleteUri = "$($asset.url)"
+            if ([string]::IsNullOrWhiteSpace($deleteUri)) {
+                throw "Release asset '$($asset.name)' does not include an API URL."
+            }
             Invoke-RestMethod -Method Delete -Uri $deleteUri -Headers $headers | Out-Null
         }
     }
@@ -316,7 +343,7 @@ $installerDir = Join-Path $projectRoot "dist\installer\output"
 $RemoteDataUrlIfAny = if ([string]::IsNullOrWhiteSpace($RemoteDataUrl)) { "https://xmeowchan.github.io/STS2_Card_Stats/cards.json" } else { $RemoteDataUrl.Trim() }
 
 if (-not $SkipBuild) {
-    Invoke-BuildArtifacts -BuildConfiguration $Configuration -RemoteUrl $RemoteDataUrl
+    Invoke-BuildArtifacts -BuildConfiguration $Configuration -BuildGameDir $GameDir -RemoteUrl $RemoteDataUrl
 }
 
 $portablePath = Join-Path $releaseDir ("HeyboxCardStatsOverlay-portable-{0}.zip" -f $version)

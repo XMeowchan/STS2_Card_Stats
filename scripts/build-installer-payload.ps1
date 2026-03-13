@@ -1,8 +1,10 @@
 param(
     [string]$Configuration = "Release",
     [string]$PayloadRoot = $(Join-Path (Split-Path -Parent $PSScriptRoot) "dist\installer\payload"),
+    [string]$GameDir,
     [string]$RemoteDataUrl,
-    [switch]$IncludeCollector
+    [switch]$IncludeCollector,
+    [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +15,22 @@ $modId = "HeyboxCardStatsOverlay"
 $dataDir = Join-Path $projectRoot "data"
 $buildOut = Join-Path $projectRoot "src\bin\$Configuration"
 $stagedModDir = Join-Path $PayloadRoot $modId
+
+if (-not $SkipBuild) {
+    $buildArgs = @(
+        "-ExecutionPolicy", "Bypass",
+        "-File", (Join-Path $PSScriptRoot "build-mod-artifacts.ps1"),
+        "-Configuration", $Configuration
+    )
+    if ($GameDir) {
+        $buildArgs += @("-GameDir", $GameDir)
+    }
+
+    & powershell @buildArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "build-mod-artifacts failed."
+    }
+}
 
 $requiredArtifacts = @(
     (Join-Path $buildOut "$modId.dll"),
@@ -36,6 +54,7 @@ New-Item -ItemType Directory -Force -Path $stagedModDir | Out-Null
 
 Copy-Item (Join-Path $buildOut "$modId.dll") (Join-Path $stagedModDir "$modId.dll") -Force
 Copy-Item (Join-Path $buildOut "$modId.pck") (Join-Path $stagedModDir "$modId.pck") -Force
+Set-PckCompatibilityHeader -Path (Join-Path $stagedModDir "$modId.pck") -EngineMinorVersion 5
 Copy-Item (Join-Path $projectRoot "mod_manifest.json") (Join-Path $stagedModDir "mod_manifest.json") -Force
 Write-EffectiveModConfig -SourcePath (Join-Path $projectRoot "config.json") -DestinationPath (Join-Path $stagedModDir "config.json") -RemoteDataUrl $RemoteDataUrl
 Copy-Item (Join-Path $projectRoot "sample_data\cards.sample.json") (Join-Path $stagedModDir "cards.sample.json") -Force

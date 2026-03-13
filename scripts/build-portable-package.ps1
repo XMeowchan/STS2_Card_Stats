@@ -1,7 +1,9 @@
 param(
     [string]$Configuration = "Release",
+    [string]$GameDir,
     [string]$RemoteDataUrl,
-    [switch]$IncludeCollector
+    [switch]$IncludeCollector,
+    [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,8 +17,14 @@ $payloadArgs = @(
 if ($RemoteDataUrl) {
     $payloadArgs += @("-RemoteDataUrl", $RemoteDataUrl)
 }
+if ($GameDir) {
+    $payloadArgs += @("-GameDir", $GameDir)
+}
 if ($IncludeCollector) {
     $payloadArgs += "-IncludeCollector"
+}
+if ($SkipBuild) {
+    $payloadArgs += "-SkipBuild"
 }
 
 & powershell @payloadArgs

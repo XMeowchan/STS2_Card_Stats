@@ -183,6 +183,64 @@ function Resolve-Sts2ModsRoot {
     return (Join-Path $GameDir "mods")
 }
 
+function Resolve-DotnetExecutable {
+    $candidates = @()
+    $candidates += "$env:USERPROFILE\.dotnet\dotnet.exe"
+
+    $dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($dotnetCommand) {
+        $candidates += $dotnetCommand.Source
+    }
+
+    $resolved = @($candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique)
+    if (-not $resolved) {
+        throw "dotnet executable not found."
+    }
+
+    return $resolved[0]
+}
+
+function Resolve-GodotExecutable {
+    $candidates = @()
+
+    $godotCommand = Get-Command godot -ErrorAction SilentlyContinue
+    if ($godotCommand) {
+        $candidates += $godotCommand.Source
+    }
+
+    $godot4Command = Get-Command godot4 -ErrorAction SilentlyContinue
+    if ($godot4Command) {
+        $candidates += $godot4Command.Source
+    }
+
+    $candidates += "D:\Steam\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe"
+
+    $resolved = @($candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique)
+    if (-not $resolved) {
+        throw "Godot executable not found."
+    }
+
+    return $resolved[0]
+}
+
+function Update-GodotAssetImports {
+    param(
+        [Parameter(Mandatory)]
+        [string]$GodotExecutable,
+        [Parameter(Mandatory)]
+        [string]$ProjectRoot
+    )
+
+    if (-not (Test-Path -LiteralPath $ProjectRoot)) {
+        throw "Project root not found: $ProjectRoot"
+    }
+
+    & $GodotExecutable --headless --editor --quit --path $ProjectRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "Godot asset import failed."
+    }
+}
+
 function New-TemporarySyncerConfig {
     param(
         [Parameter(Mandatory)]

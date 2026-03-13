@@ -14,31 +14,8 @@ $dataDir = Join-Path $projectRoot "data"
 $modId = "HeyboxCardStatsOverlay"
 $resolvedGameDir = Resolve-Sts2GameDir -RequestedPath $GameDir
 $modDir = Join-Path (Resolve-Sts2ModsRoot -GameDir $resolvedGameDir) $modId
-
-$dotnetCandidates = @()
-$dotnetCandidates += "$env:USERPROFILE\.dotnet\dotnet.exe"
-$dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
-if ($dotnetCommand) { $dotnetCandidates += $dotnetCommand.Source }
-$dotnetCandidates = @($dotnetCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique)
-
-$godotCandidates = @()
-$godotCommand = Get-Command godot -ErrorAction SilentlyContinue
-if ($godotCommand) { $godotCandidates += $godotCommand.Source }
-$godot4Command = Get-Command godot4 -ErrorAction SilentlyContinue
-if ($godot4Command) { $godotCandidates += $godot4Command.Source }
-$godotCandidates += "D:\Steam\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe"
-$godotCandidates = @($godotCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique)
-
-if (-not $dotnetCandidates) {
-    throw "dotnet executable not found."
-}
-
-if (-not $godotCandidates) {
-    throw "Godot executable not found."
-}
-
-$dotnet = $dotnetCandidates[0]
-$godot = $godotCandidates[0]
+$dotnet = Resolve-DotnetExecutable
+$godot = Resolve-GodotExecutable
 $buildOut = Join-Path $srcDir "bin\$Configuration"
 $dllPath = Join-Path $buildOut "$modId.dll"
 $pckPath = Join-Path $buildOut "$modId.pck"
@@ -61,6 +38,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet build failed."
 }
 
+Update-GodotAssetImports -GodotExecutable $godot -ProjectRoot $projectRoot
+
 & $godot --headless --path $projectRoot --script (Join-Path $projectRoot "scripts\build_pck.gd") -- $pckPath
 if ($LASTEXITCODE -ne 0) {
     throw "Godot pck build failed."
@@ -70,6 +49,7 @@ Set-PckCompatibilityHeader -Path $pckPath -EngineMinorVersion 5
 
 Copy-Item $dllPath (Join-Path $modDir "$modId.dll") -Force
 Copy-Item $pckPath (Join-Path $modDir "$modId.pck") -Force
+Set-PckCompatibilityHeader -Path (Join-Path $modDir "$modId.pck") -EngineMinorVersion 5
 Copy-Item (Join-Path $projectRoot "mod_manifest.json") (Join-Path $modDir "mod_manifest.json") -Force
 Write-EffectiveModConfig -SourcePath (Join-Path $projectRoot "config.json") -DestinationPath (Join-Path $modDir "config.json") -RemoteDataUrl $RemoteDataUrl
 Copy-Item (Join-Path $projectRoot "sample_data\cards.sample.json") (Join-Path $modDir "cards.sample.json") -Force

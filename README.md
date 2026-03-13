@@ -2,7 +2,7 @@
   <img src="pack_assets/HeyboxCardStatsOverlay/mod_image.png" alt="STS2 Card Stats Overlay" width="160">
 </p>
 
-<h1 align="center">STS2 卡牌统计悬浮窗</h1>
+<h1 align="center">STS2 卡牌数据悬浮窗</h1>
 
 <p align="center">
   把卡牌统计直接带进《Slay the Spire 2》游戏里。
@@ -23,6 +23,12 @@
 > 安装后，把鼠标停在卡牌上，就能直接看到这张卡的大盘参考数据。  
 > 不用切网页，不用查表，也不用手动同步数据。
 
+## 0.2.4 亮点
+
+- 卡牌库里新增按抓取率 / 胜率排序按钮，找强卡更直观
+- GitHub README 现在会展示匿名用户量曲线，方便维护项目增长趋势
+- 安装包、便携包和发布脚本统一走同一套构建流程，减少打包出错
+
 ## 用户量曲线
 
 <p align="center">
@@ -42,6 +48,7 @@
 - 略过率
 - 抓取次数、胜局数、败局数
 - 职业内相对排名
+- 卡牌库内按抓取率 / 胜率快速排序
 
 这些数据属于社区统计，仅供参考，不会改动卡牌本身效果、战斗流程或存档。
 

@@ -27,6 +27,7 @@ func _initialize() -> void:
 
     var files := {}
     _collect_files(ProjectSettings.globalize_path(PACK_ROOT), "res://%s" % MOD_ID, files)
+    _collect_imported_dependencies(files)
     for target_path in files.keys():
         var source_path: String = files[target_path]
         err = packer.add_file(target_path, source_path)
@@ -74,6 +75,38 @@ func _collect_files(source_dir: String, target_dir: String, files: Dictionary) -
         else:
             files[target_path] = source_path
     dir.list_dir_end()
+
+func _collect_imported_dependencies(files: Dictionary) -> void:
+    var target_paths := files.keys()
+    for target_path_variant in target_paths:
+        var target_path := String(target_path_variant)
+        if not target_path.ends_with(".import"):
+            continue
+
+        var import_source_path := String(files[target_path])
+        var config := ConfigFile.new()
+        var err := config.load(import_source_path)
+        if err != OK:
+            push_error("Failed to read import metadata %s (%s)" % [import_source_path, err])
+            quit(err)
+            return
+
+        var dest_files_variant: Variant = config.get_value("deps", "dest_files", [])
+        if dest_files_variant is not Array:
+            continue
+
+        for dest_file_variant in dest_files_variant:
+            var dest_file := String(dest_file_variant)
+            if dest_file == "":
+                continue
+
+            var source_path := ProjectSettings.globalize_path(dest_file)
+            if not FileAccess.file_exists(dest_file):
+                push_error("Missing imported resource %s referenced by %s. Run Godot import before packing." % [dest_file, import_source_path])
+                quit(3)
+                return
+
+            files[dest_file] = source_path
 
 func _resolve_bundled_data_source() -> String:
     var candidates := [
