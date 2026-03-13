@@ -25,7 +25,47 @@ jobs:
     runs-on: [self-hosted, windows, x64]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $workspace = $env:GITHUB_WORKSPACE
+          if (-not $workspace) {
+            throw "GITHUB_WORKSPACE is not set."
+          }
+
+          if (Test-Path -LiteralPath $workspace) {
+            Get-ChildItem -LiteralPath $workspace -Force | Remove-Item -Recurse -Force
+          }
+          else {
+            New-Item -ItemType Directory -Force -Path $workspace | Out-Null
+          }
+
+          Set-Location $workspace
+          git -c http.proxy= -c https.proxy= init | Out-Null
+          git -c http.proxy= -c https.proxy= remote add origin ("https://x-access-token:{0}@github.com/{1}.git" -f $env:GITHUB_TOKEN, "${{ github.repository }}")
+
+          $ref = "${{ github.ref }}"
+          $fetched = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try {
+              git -c http.proxy= -c https.proxy= fetch --depth 1 origin $ref
+              if ($LASTEXITCODE -eq 0) {
+                $fetched = $true
+                break
+              }
+            }
+            catch {
+            }
+
+            Start-Sleep -Seconds (2 * $attempt)
+          }
+
+          if (-not $fetched) {
+            throw "git fetch failed for $ref"
+          }
+
+          git -c http.proxy= -c https.proxy= checkout --force FETCH_HEAD
 
       - name: Publish release
         shell: powershell
