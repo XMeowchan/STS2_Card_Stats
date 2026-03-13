@@ -72,7 +72,7 @@ function Convert-ToUsageRows {
         })
     }
 
-    return $filled.ToArray()
+    return ,($filled.ToArray())
 }
 
 function Get-NiceUpperBound {
@@ -200,55 +200,103 @@ function Format-AxisDay {
     return $parsed.ToString($(if ($IncludeYear) { "yyyy-MM-dd" } else { "MM-dd" }), $culture)
 }
 
+function New-DoodleLinePath {
+    param(
+        [double]$X1,
+        [double]$Y1,
+        [double]$X2,
+        [double]$Y2,
+        [double]$Amplitude = 4.0,
+        [int]$Segments = 8
+    )
+
+    $dx = $X2 - $X1
+    $dy = $Y2 - $Y1
+    $length = [math]::Sqrt(($dx * $dx) + ($dy * $dy))
+    if ($length -le 0) {
+        return ("M {0:F2},{1:F2}" -f $X1, $Y1)
+    }
+
+    $normalX = -$dy / $length
+    $normalY = $dx / $length
+    $points = New-Object System.Collections.Generic.List[object]
+
+    for ($index = 0; $index -le $Segments; $index += 1) {
+        $t = [double]$index / [double]$Segments
+        $baseX = $X1 + ($dx * $t)
+        $baseY = $Y1 + ($dy * $t)
+        $offset = 0.0
+
+        if ($index -gt 0 -and $index -lt $Segments) {
+            $direction = if (($index % 2) -eq 0) { -1.0 } else { 1.0 }
+            $strength = 1.0 - ([math]::Abs(0.5 - $t) * 0.8)
+            $offset = $direction * $Amplitude * $strength
+        }
+
+        $points.Add((New-ChartPoint -X ($baseX + ($normalX * $offset)) -Y ($baseY + ($normalY * $offset))))
+    }
+
+    return Convert-ToSmoothSvgPath -Points $points.ToArray()
+}
+
 function New-PlaceholderUsageChartSvg {
     param([string]$StatusText)
 
-    $safeStatus = if ([string]::IsNullOrWhiteSpace($StatusText)) { "Telemetry not configured yet." } else { $StatusText }
+    $safeStatus = if ([string]::IsNullOrWhiteSpace($StatusText)) { "No data yet" } else { $StatusText }
+    $width = 1240
+    $height = 540
+    $plotLeft = 126.0
+    $plotTop = 104.0
+    $plotWidth = 1010.0
+    $plotHeight = 328.0
+    $baselineY = $plotTop + $plotHeight
+    $axisColor = "#101010"
+    $curveColor = "#d9472f"
+    $xAxisPath = New-DoodleLinePath -X1 $plotLeft -Y1 $baselineY -X2 ($plotLeft + $plotWidth) -Y2 $baselineY -Amplitude 3.5 -Segments 10
+    $yAxisPath = New-DoodleLinePath -X1 $plotLeft -Y1 $plotTop -X2 $plotLeft -Y2 $baselineY -Amplitude 4.5 -Segments 8
+    $yLabels = @(
+        [pscustomobject]@{ value = 10; y = $plotTop },
+        [pscustomobject]@{ value = 5; y = $plotTop + ($plotHeight / 2.0) },
+        [pscustomobject]@{ value = 0; y = $baselineY }
+    )
+
     $lines = @(
-        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1240 436' role='img' aria-labelledby='title desc'>",
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 $width $height' role='img' aria-labelledby='title desc'>",
         "  <title id='title'>STS2 Mod User Curve</title>",
-        "  <desc id='desc'>Placeholder chart while telemetry is unavailable.</desc>",
-        "  <defs>",
-        "    <linearGradient id='shell' x1='0%' y1='0%' x2='100%' y2='100%'>",
-        "      <stop offset='0%' stop-color='#ece1c8'/>",
-        "      <stop offset='100%' stop-color='#e2d4b5'/>",
-        "    </linearGradient>",
-        "    <linearGradient id='plotFill' x1='0%' y1='0%' x2='0%' y2='100%'>",
-        "      <stop offset='0%' stop-color='#e5c88a' stop-opacity='0.26'/>",
-        "      <stop offset='100%' stop-color='#e5c88a' stop-opacity='0.03'/>",
-        "    </linearGradient>",
-        "  </defs>",
+        "  <desc id='desc'>Minimal hand-drawn style user curve placeholder.</desc>",
         "  <style>",
-        "    .font { font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; }",
-        "    .eyebrow { font-size: 16px; font-weight: 700; fill: #996813; letter-spacing: 0.08em; text-transform: uppercase; }",
-        "    .title { font-size: 36px; font-weight: 700; fill: #15263b; }",
-        "    .body { font-size: 18px; fill: #5d6670; }",
-        "    .metricLabel { font-size: 15px; fill: #5d6670; }",
-        "    .metricValue { font-size: 26px; font-weight: 700; fill: #15263b; }",
-        "    .grid { stroke: #e8dcc2; stroke-width: 1; }",
+        "    .font { font-family: 'Segoe Print', 'Comic Sans MS', 'Microsoft YaHei UI', cursive; }",
+        "    .metricLabel { font-size: 16px; fill: #303030; }",
+        "    .metricValue { font-size: 28px; font-weight: 700; fill: #101010; }",
+        "    .tick { font-size: 15px; fill: #101010; }",
+        "    .axisLabel { font-size: 18px; fill: #101010; }",
+        "    .meta { font-size: 14px; fill: #444444; }",
         "  </style>",
-        "  <rect width='1240' height='436' rx='34' fill='url(#shell)'/>",
-        "  <rect x='32' y='28' width='1176' height='380' rx='26' fill='#fffdf8' stroke='#d7c8a6'/>",
-        "  <text x='66' y='82' class='font eyebrow'>Anonymous telemetry</text>",
-        "  <text x='66' y='128' class='font title'>STS2 Mod User Curve</text>",
-        "  <text x='66' y='158' class='font body'>Daily cumulative installations observed by the telemetry worker.</text>",
-        "  <text x='876' y='84' class='font metricLabel'>Cumulative</text>",
-        "  <text x='876' y='120' class='font metricValue'>--</text>",
-        "  <text x='1012' y='84' class='font metricLabel'>Active</text>",
-        "  <text x='1012' y='120' class='font metricValue'>--</text>",
-        "  <text x='1120' y='84' text-anchor='end' class='font metricLabel'>New</text>",
-        "  <text x='1120' y='120' text-anchor='end' class='font metricValue'>--</text>",
-        "  <line x1='80' y1='194' x2='1162' y2='194' class='grid'/>",
-        "  <line x1='80' y1='256' x2='1162' y2='256' class='grid'/>",
-        "  <line x1='80' y1='318' x2='1162' y2='318' class='grid'/>",
-        "  <path d='M 80,318 C 306,316 522,314 742,310 C 906,307 1038,303 1162,300 L 1162,346 L 80,346 Z' fill='url(#plotFill)'/>",
-        "  <path d='M 80,318 C 306,316 522,314 742,310 C 906,307 1038,303 1162,300' fill='none' stroke='#c88a21' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>",
-        "  <circle cx='80' cy='318' r='5' fill='#c88a21'/>",
-        "  <circle cx='1162' cy='300' r='6' fill='#c88a21' stroke='#fffdf8' stroke-width='3'/>",
-        "  <text x='66' y='278' class='font body'>This chart appears automatically after the telemetry worker starts receiving heartbeats.</text>",
-        "  <text x='66' y='306' class='font body'>$safeStatus</text>",
-        "  <text x='66' y='382' class='font body'>Range: awaiting telemetry data</text>",
-        "  <text x='1140' y='382' text-anchor='end' class='font body'>Updated: pending</text>",
+        "  <rect width='$width' height='$height' rx='22' fill='#ffffff'/>",
+        "  <path d='$xAxisPath' fill='none' stroke='$axisColor' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>",
+        "  <path d='$yAxisPath' fill='none' stroke='$axisColor' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>",
+        "  <text x='860' y='52' class='font metricLabel'>Total</text>",
+        "  <text x='860' y='86' class='font metricValue'>--</text>",
+        "  <text x='970' y='52' class='font metricLabel'>Active</text>",
+        "  <text x='970' y='86' class='font metricValue'>--</text>",
+        "  <text x='1098' y='52' text-anchor='end' class='font metricLabel'>New</text>",
+        "  <text x='1098' y='86' text-anchor='end' class='font metricValue'>--</text>",
+        "  <path d='M 166.00,402.00 C 348.00,396.00 566.00,398.00 782.00,395.00 C 916.00,393.00 1026.00,391.00 1122.00,388.00' fill='none' stroke='$curveColor' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>",
+        "  <text x='620' y='260' text-anchor='middle' class='font meta'>$safeStatus</text>",
+        "  <text x='1140' y='496' text-anchor='end' class='font meta'>Updated pending</text>",
+        "  <text x='642' y='522' text-anchor='middle' class='font axisLabel'>Date</text>",
+        "  <text x='44' y='270' transform='rotate(-90 44 270)' class='font axisLabel'>Users</text>"
+    )
+
+    foreach ($tick in $yLabels) {
+        $y = "{0:F2}" -f $tick.y
+        $lines += "  <line x1='118' y1='$y' x2='138' y2='$y' stroke='$axisColor' stroke-width='3' stroke-linecap='round'/>"
+        $lines += "  <text x='96' y='$(("{0:F2}" -f ($tick.y + 5)))' text-anchor='end' class='font tick'>$($tick.value)</text>"
+    }
+
+    $lines += @(
+        "  <line x1='126.00' y1='432.00' x2='126.00' y2='448.00' stroke='$axisColor' stroke-width='3' stroke-linecap='round'/>",
+        "  <text x='126.00' y='474.00' text-anchor='middle' class='font tick'>--</text>",
         "</svg>"
     )
 
@@ -264,12 +312,13 @@ function New-UsageChartSvg {
 
     $culture = [System.Globalization.CultureInfo]::InvariantCulture
     $width = 1240
-    $height = 436
-    $plotLeft = 82.0
-    $plotTop = 176.0
-    $plotWidth = 1080.0
-    $plotHeight = 164.0
-    $rowCount = [double][math]::Max(1, $Rows.Count - 1)
+    $height = 540
+    $plotLeft = 126.0
+    $plotTop = 104.0
+    $plotWidth = 1010.0
+    $plotHeight = 328.0
+    $plotRows = if ($Rows.Count -eq 1) { @($Rows[0], $Rows[0]) } else { $Rows }
+    $rowCount = [double][math]::Max(1, $plotRows.Count - 1)
     $maxUsers = Get-NiceUpperBound -Value ([int](($Rows | Measure-Object -Property cumulative_users -Maximum).Maximum))
     $yTicks = 4
     $yLabels = @()
@@ -283,8 +332,8 @@ function New-UsageChartSvg {
     }
 
     $points = New-Object System.Collections.Generic.List[object]
-    for ($index = 0; $index -lt $Rows.Count; $index += 1) {
-        $row = $Rows[$index]
+    for ($index = 0; $index -lt $plotRows.Count; $index += 1) {
+        $row = $plotRows[$index]
         $x = $plotLeft + ($plotWidth * $index / $rowCount)
         $ratio = if ($maxUsers -le 0) { 0.0 } else { [double]$row.cumulative_users / [double]$maxUsers }
         $y = $plotTop + $plotHeight - ($plotHeight * $ratio)
@@ -295,85 +344,73 @@ function New-UsageChartSvg {
     $linePath = Convert-ToSmoothSvgPath -Points $points.ToArray()
     $lastPoint = $points[$points.Count - 1]
     $firstPoint = $points[0]
-    $areaPath = "$linePath L $(("{0:F2},{1:F2}" -f $lastPoint.x, $baselineY)) L $(("{0:F2},{1:F2}" -f $firstPoint.x, $baselineY)) Z"
+    $xAxisPath = New-DoodleLinePath -X1 $plotLeft -Y1 $baselineY -X2 ($plotLeft + $plotWidth) -Y2 $baselineY -Amplitude 3.5 -Segments 10
+    $yAxisPath = New-DoodleLinePath -X1 $plotLeft -Y1 $plotTop -X2 $plotLeft -Y2 $baselineY -Amplitude 4.5 -Segments 8
 
     $latest = $Rows[-1]
     $first = $Rows[0]
-    $latestDayText = $latest.day
     $generatedAtText = if ([string]::IsNullOrWhiteSpace($GeneratedAt)) {
-        [DateTimeOffset]::UtcNow.ToString("yyyy-MM-dd HH:mm 'UTC'", $culture)
+        [DateTimeOffset]::UtcNow.ToString("yyyy-MM-dd", $culture)
     } else {
         try {
-            ([DateTimeOffset]::Parse($GeneratedAt, $culture)).ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'", $culture)
+            ([DateTimeOffset]::Parse($GeneratedAt, $culture)).ToUniversalTime().ToString("yyyy-MM-dd", $culture)
         }
         catch {
             $GeneratedAt
         }
     }
 
-    $xLabelIndexes = Get-DateTickIndexes -Rows $Rows -TickCount 5
+    $xLabelIndexes = if ($Rows.Count -eq 1) { @(0) } else { Get-DateTickIndexes -Rows $Rows -TickCount 5 }
     $showYearOnEdges = $first.day.Substring(0, 4) -ne $latest.day.Substring(0, 4)
+    $axisColor = "#101010"
+    $curveColor = "#d9472f"
 
     $lines = @(
         "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 $width $height' role='img' aria-labelledby='title desc'>",
         "  <title id='title'>STS2 Mod User Curve</title>",
-        "  <desc id='desc'>Cumulative anonymous mod users by day.</desc>",
-        "  <defs>",
-        "    <linearGradient id='shell' x1='0%' y1='0%' x2='100%' y2='100%'>",
-        "      <stop offset='0%' stop-color='#ece1c8'/>",
-        "      <stop offset='100%' stop-color='#e2d4b5'/>",
-        "    </linearGradient>",
-        "    <linearGradient id='fill' x1='0%' y1='0%' x2='0%' y2='100%'>",
-        "      <stop offset='0%' stop-color='#e1be76' stop-opacity='0.42'/>",
-        "      <stop offset='100%' stop-color='#e1be76' stop-opacity='0.04'/>",
-        "    </linearGradient>",
-        "  </defs>",
+        "  <desc id='desc'>Minimal hand-drawn style cumulative user curve.</desc>",
         "  <style>",
-        "    .font { font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; }",
-        "    .eyebrow { font-size: 16px; font-weight: 700; fill: #996813; letter-spacing: 0.08em; text-transform: uppercase; }",
-        "    .title { font-size: 36px; font-weight: 700; fill: #15263b; }",
-        "    .body { font-size: 18px; fill: #5d6670; }",
-        "    .metricLabel { font-size: 15px; fill: #5d6670; }",
-        "    .metricValue { font-size: 26px; font-weight: 700; fill: #15263b; }",
-        "    .axis { font-size: 12px; fill: #5d6670; }",
-        "    .grid { stroke: #e8dcc2; stroke-width: 1; }",
+        "    .font { font-family: 'Segoe Print', 'Comic Sans MS', 'Microsoft YaHei UI', cursive; }",
+        "    .metricLabel { font-size: 16px; fill: #303030; }",
+        "    .metricValue { font-size: 28px; font-weight: 700; fill: #101010; }",
+        "    .tick { font-size: 15px; fill: #101010; }",
+        "    .axisLabel { font-size: 18px; fill: #101010; }",
+        "    .meta { font-size: 14px; fill: #444444; }",
         "  </style>",
-        "  <rect width='$width' height='$height' rx='34' fill='url(#shell)'/>",
-        "  <rect x='32' y='28' width='1176' height='380' rx='26' fill='#fffdf8' stroke='#d7c8a6'/>",
-        "  <text x='66' y='82' class='font eyebrow'>Anonymous telemetry</text>",
-        "  <text x='66' y='128' class='font title'>STS2 Mod User Curve</text>",
-        "  <text x='66' y='158' class='font body'>Daily cumulative installations observed by the telemetry worker.</text>",
-        "  <text x='876' y='84' class='font metricLabel'>Cumulative</text>",
-        "  <text x='876' y='120' class='font metricValue'>$(Format-Number -Value $latest.cumulative_users)</text>",
-        "  <text x='1012' y='84' class='font metricLabel'>Active</text>",
-        "  <text x='1012' y='120' class='font metricValue'>$(Format-Number -Value $latest.active_users)</text>",
-        "  <text x='1120' y='84' text-anchor='end' class='font metricLabel'>New</text>",
-        "  <text x='1120' y='120' text-anchor='end' class='font metricValue'>$(Format-Number -Value $latest.new_users)</text>"
+        "  <rect width='$width' height='$height' rx='22' fill='#ffffff'/>",
+        "  <path d='$xAxisPath' fill='none' stroke='$axisColor' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>",
+        "  <path d='$yAxisPath' fill='none' stroke='$axisColor' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>",
+        "  <text x='860' y='52' class='font metricLabel'>Total</text>",
+        "  <text x='860' y='86' class='font metricValue'>$(Format-Number -Value $latest.cumulative_users)</text>",
+        "  <text x='970' y='52' class='font metricLabel'>Active</text>",
+        "  <text x='970' y='86' class='font metricValue'>$(Format-Number -Value $latest.active_users)</text>",
+        "  <text x='1098' y='52' text-anchor='end' class='font metricLabel'>New</text>",
+        "  <text x='1098' y='86' text-anchor='end' class='font metricValue'>$(Format-Number -Value $latest.new_users)</text>"
     )
 
     foreach ($tick in $yLabels) {
         $y = "{0:F2}" -f $tick.y
-        $lines += "  <line x1='$plotLeft' y1='$y' x2='$(("{0:F2}" -f ($plotLeft + $plotWidth)))' y2='$y' class='grid'/>"
-        $lines += "  <text x='66' y='$(("{0:F2}" -f ($tick.y + 4)))' class='font axis'>$(Format-Number -Value $tick.value)</text>"
+        $lines += "  <line x1='118' y1='$y' x2='138' y2='$y' stroke='$axisColor' stroke-width='3' stroke-linecap='round'/>"
+        $lines += "  <text x='96' y='$(("{0:F2}" -f ($tick.y + 5)))' text-anchor='end' class='font tick'>$(Format-Number -Value $tick.value)</text>"
     }
 
-    $lines += "  <path d='$areaPath' fill='url(#fill)'/>"
-    $lines += "  <path d='$linePath' fill='none' stroke='#d8522b' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>"
-    $lines += "  <circle cx='$(("{0:F2}" -f $firstPoint.x))' cy='$(("{0:F2}" -f $firstPoint.y))' r='5' fill='#d39a29'/>"
+    $lines += "  <path d='$linePath' fill='none' stroke='$curveColor' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>"
+    $lines += "  <circle cx='$(("{0:F2}" -f $firstPoint.x))' cy='$(("{0:F2}" -f $firstPoint.y))' r='5' fill='$curveColor'/>"
 
     foreach ($labelIndex in $xLabelIndexes) {
         $row = $Rows[$labelIndex]
-        $x = $plotLeft + ($plotWidth * $labelIndex / $rowCount)
+        $x = if ($Rows.Count -eq 1) { $plotLeft } else { $plotLeft + ($plotWidth * $labelIndex / [double][math]::Max(1, $Rows.Count - 1)) }
         $formattedX = "{0:F2}" -f $x
-        $lines += "  <line x1='$formattedX' y1='$(("{0:F2}" -f ($plotTop + $plotHeight)))' x2='$formattedX' y2='$(("{0:F2}" -f ($plotTop + $plotHeight + 8)))' stroke='#b6a57e' stroke-width='1'/>"
-        $labelText = Format-AxisDay -Day $row.day -SeriesLength $Rows.Count -IncludeYear (($showYearOnEdges -and ($labelIndex -eq 0 -or $labelIndex -eq ($Rows.Count - 1))))
-        $lines += "  <text x='$formattedX' y='$(("{0:F2}" -f ($plotTop + $plotHeight + 28)))' text-anchor='middle' class='font axis'>$labelText</text>"
+        $lines += "  <line x1='$formattedX' y1='$(("{0:F2}" -f $baselineY))' x2='$formattedX' y2='$(("{0:F2}" -f ($baselineY + 16)))' stroke='$axisColor' stroke-width='3' stroke-linecap='round'/>"
+        $labelText = Format-AxisDay -Day $row.day -SeriesLength $Rows.Count -IncludeYear (($Rows.Count -eq 1) -or ($showYearOnEdges -and ($labelIndex -eq 0 -or $labelIndex -eq ($Rows.Count - 1))))
+        $lines += "  <text x='$formattedX' y='$(("{0:F2}" -f ($baselineY + 42)))' text-anchor='middle' class='font tick'>$labelText</text>"
     }
 
     $lines += @(
-        "  <circle cx='$(("{0:F2}" -f $lastPoint.x))' cy='$(("{0:F2}" -f $lastPoint.y))' r='6' fill='#c88a21' stroke='#fffdf8' stroke-width='3'/>",
-        "  <text x='66' y='382' class='font body'>Range: $($first.day) to $latestDayText</text>",
-        "  <text x='1140' y='382' text-anchor='end' class='font body'>Updated: $generatedAtText</text>",
+        "  <circle cx='$(("{0:F2}" -f $lastPoint.x))' cy='$(("{0:F2}" -f $lastPoint.y))' r='6' fill='$curveColor'/>",
+        "  <text x='1140' y='496' text-anchor='end' class='font meta'>Updated $generatedAtText</text>",
+        "  <text x='642' y='522' text-anchor='middle' class='font axisLabel'>Date</text>",
+        "  <text x='44' y='270' transform='rotate(-90 44 270)' class='font axisLabel'>Users</text>",
         "</svg>"
     )
 
