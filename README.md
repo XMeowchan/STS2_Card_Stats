@@ -2,6 +2,44 @@
 
 STS2 Mod that adds a XiaoHeiHe stats panel beside hovered cards.
 
+## 更新卡牌数据
+
+如果你只是想更新 GitHub Pages 上给 Mod 拉取的卡牌数据，正常流程是：
+
+1. 先把最新采集结果同步进本仓库：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-cards.ps1
+```
+
+2. 确认这些文件已经刷新：
+
+- `data/cards.json`
+- `data/cards.fallback.json`
+- `data/sync_state.json`
+
+3. 把改动提交并推送到 `main`。
+
+4. GitHub Actions 会自动重新发布 Pages，线上数据地址是：
+
+```text
+https://xmeowchan.github.io/STS2_Card_Stats/cards.json
+```
+
+如果你只是更新线上数据，通常不需要重新打安装包。
+
+只有在下面这些情况里，才建议重新打包并更新 Release：
+
+- 你希望新安装的用户拿到最新离线数据
+- Mod 代码、界面、配置项发生了变化
+- `cards.json` 的结构或兼容策略有改动
+
+重新打安装包用：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
+```
+
 ## Local data flow
 
 - The mod reads `cards.json` from its deployed mod folder.
