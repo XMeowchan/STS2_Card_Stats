@@ -205,7 +205,7 @@ function Ensure-ReleaseViaApi {
             prerelease = [bool]$IsPrerelease
         } | ConvertTo-Json -Depth 6
 
-        return Invoke-RestMethod -Method Patch -Uri ("{0}/{1}" -f (Get-ReleaseApiBase -Repository $Repository), $existing.id) -Headers $headers -Body $body -ContentType "application/json"
+        return Invoke-RestMethod -Method Patch -Uri ("{0}/{1}" -f (Get-ReleaseApiBase -Repository $Repository), $existing.id) -Headers $headers -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -ContentType "application/json; charset=utf-8"
     }
 
     $createBody = @{
@@ -216,7 +216,7 @@ function Ensure-ReleaseViaApi {
         prerelease = [bool]$IsPrerelease
     } | ConvertTo-Json -Depth 6
 
-    return Invoke-RestMethod -Method Post -Uri (Get-ReleaseApiBase -Repository $Repository) -Headers $headers -Body $createBody -ContentType "application/json"
+    return Invoke-RestMethod -Method Post -Uri (Get-ReleaseApiBase -Repository $Repository) -Headers $headers -Body ([System.Text.Encoding]::UTF8.GetBytes($createBody)) -ContentType "application/json; charset=utf-8"
 }
 
 function Remove-ExistingAssetsViaApi {
