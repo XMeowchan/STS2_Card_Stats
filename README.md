@@ -23,6 +23,14 @@
 > 安装后，把鼠标停在卡牌上，就能直接看到这张卡的大盘参考数据。  
 > 不用切网页，不用查表，也不用手动同步数据。
 
+## 用户量曲线
+
+<p align="center">
+  <img src="https://xmeowchan.github.io/STS2_Card_Stats/users-history.svg" alt="STS2 Mod 用户量曲线" width="100%">
+</p>
+
+> 这条曲线来自 Mod 的匿名日心跳：每个安装实例每天最多上报一次，只统计随机安装 ID，不采集 Steam 账号、用户名或硬件指纹。
+
 ## 这是什么
 
 这是一个《Slay the Spire 2》Mod，用来在卡牌悬浮提示旁边追加一块统计面板。
@@ -104,3 +112,9 @@ Slay the Spire 2\mods\HeyboxCardStatsOverlay
 ### 我需要自己手动更新数据吗
 
 普通玩家不需要。安装好后直接用就行。
+
+### 用户量曲线会收集什么
+
+只会发送匿名安装 ID、Mod 版本、平台和上报时间，用来统计累计用户数和日活。
+
+如果你不想参与匿名统计，可以把 `config.json` 里的 `telemetry_enabled` 改成 `false`。

@@ -2,12 +2,16 @@ name: Deploy Pages Data
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "15 2 * * *"
   push:
     branches:
       - main
     paths:
       - data/**
       - sample_data/**
+      - telemetry/**
+      - scripts/build-usage-curve.ps1
       - scripts/build-pages-data.ps1
       - mod_manifest.json
       - .github/workflows/deploy-pages.yml

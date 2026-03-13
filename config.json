@@ -13,7 +13,7 @@
   "mod_update_enabled": true,
   "mod_update_github_repo": "XMeowchan/STS2_Card_Stats",
   "mod_update_timeout_seconds": 15,
-  "telemetry_enabled": false,
-  "telemetry_endpoint": "",
+  "telemetry_enabled": true,
+  "telemetry_endpoint": "https://sts2-card-stats-telemetry.xmeowchan0415.workers.dev/v1/heartbeat",
   "telemetry_timeout_seconds": 5
 }

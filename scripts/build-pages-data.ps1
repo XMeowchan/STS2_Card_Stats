@@ -1,5 +1,6 @@
 param(
-    [string]$OutputDir = $(Join-Path (Split-Path -Parent $PSScriptRoot) "dist\pages")
+    [string]$OutputDir = $(Join-Path (Split-Path -Parent $PSScriptRoot) "dist\pages"),
+    [string]$TelemetryStatsUrl = $(if ([string]::IsNullOrWhiteSpace($env:TELEMETRY_STATS_URL)) { "https://sts2-card-stats-telemetry.xmeowchan0415.workers.dev/v1/stats.json?days=365" } else { $env:TELEMETRY_STATS_URL })
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,11 +25,29 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 $targetDataPath = Join-Path $OutputDir "cards.json"
 Copy-Item -LiteralPath $sourcePath -Destination $targetDataPath -Force
+& (Join-Path $PSScriptRoot "build-usage-curve.ps1") -OutputDir $OutputDir -StatsUrl $TelemetryStatsUrl
 
 $updatedAt = (Get-Item -LiteralPath $targetDataPath).LastWriteTimeUtc.ToString("o")
 $sourceName = "xiaoheihe"
 $remoteDataUrl = [string]$config.remote_data_url
 $sourceFileName = Split-Path -Leaf $sourcePath
+$usageStatsPath = Join-Path $OutputDir "usage-stats.json"
+$usageStats = if (Test-Path -LiteralPath $usageStatsPath) {
+    Get-Content -LiteralPath $usageStatsPath -Raw | ConvertFrom-Json
+}
+else {
+    $null
+}
+$usageHasData = ($null -ne $usageStats) -and [bool]$usageStats.has_data
+$usageStatusText = if ($null -ne $usageStats -and -not [string]::IsNullOrWhiteSpace([string]$usageStats.status_text)) {
+    [string]$usageStats.status_text
+}
+else {
+    "Telemetry not configured yet."
+}
+$usageCumulativeUsers = if ($usageHasData -and $null -ne $usageStats.latest) { "{0:N0}" -f [int]$usageStats.latest.cumulative_users } else { "--" }
+$usageActiveUsers = if ($usageHasData -and $null -ne $usageStats.latest) { "{0:N0}" -f [int]$usageStats.latest.active_users } else { "--" }
+$usageLatestDay = if ($usageHasData -and $null -ne $usageStats.latest -and -not [string]::IsNullOrWhiteSpace([string]$usageStats.latest.day)) { [string]$usageStats.latest.day } else { "--" }
 
 $title = "STS2 &#x5361;&#x724c;&#x6570;&#x636e;&#x66f4;&#x65b0;&#x8bf4;&#x660e;"
 $eyebrow = "STS2 GitHub Pages &#x6570;&#x636e;&#x6e90;"
@@ -53,6 +72,12 @@ $sectionRepack2 = "&#x4f60;&#x60f3;&#x8ba9;&#x65b0;&#x4e0b;&#x8f7d;&#x5b89;&#x88
 $sectionRepack3 = "&#x6570;&#x636e;&#x7ed3;&#x6784;&#x3001;&#x517c;&#x5bb9;&#x7b56;&#x7565;&#x6216;&#x6253;&#x5305;&#x65b9;&#x5f0f;&#x6709;&#x53d8;&#x66f4;&#x3002;"
 $sectionConfigTitle = "&#x8fdc;&#x7a0b;&#x914d;&#x7f6e;&#x793a;&#x4f8b;"
 $sectionConfigBody = "&#x9ed8;&#x8ba4;&#x914d;&#x7f6e;&#x5df2;&#x7ecf;&#x6307;&#x5411;&#x8fd9;&#x4e2a;&#x4ed3;&#x5e93;&#x7684; Pages &#x5730;&#x5740;&#x3002;&#x5982;&#x679c;&#x4f60;&#x8981;&#x624b;&#x52a8;&#x586b;&#x5199;&#xff0c;&#x53ef;&#x4ee5;&#x5728; <code>config.json</code> &#x91cc;&#x4f7f;&#x7528;&#x4e0b;&#x9762;&#x8fd9;&#x7ec4;&#x5b57;&#x6bb5;&#x3002;"
+$sectionUsageTitle = "&#x533f;&#x540d;&#x7528;&#x6237;&#x91cf;&#x66f2;&#x7ebf;"
+$sectionUsageBody = "&#x5f53;&#x4f60;&#x90e8;&#x7f72;&#x514d;&#x8d39; Cloudflare Worker &#x540e;&#xff0c;Mod &#x4f1a;&#x6bcf;&#x5929;&#x6700;&#x591a;&#x4e0a;&#x62a5;&#x4e00;&#x6b21;&#x533f;&#x540d;&#x5fc3;&#x8df3;&#x3002;&#x4e0b;&#x9762;&#x8fd9;&#x6761;&#x66f2;&#x7ebf;&#x7528;&#x6765;&#x5c55;&#x793a;&#x7d2f;&#x8ba1;&#x88ab;&#x89c2;&#x6d4b;&#x5230;&#x7684;&#x5b89;&#x88c5;&#x5b9e;&#x4f8b;&#x6570;&#x3002;"
+$labelCumulativeUsers = "&#x7d2f;&#x8ba1;&#x7528;&#x6237;"
+$labelActiveUsers = "&#x5f53;&#x65e5;&#x6d3b;&#x8dc3;"
+$labelLatestDay = "&#x6700;&#x65b0;&#x7edf;&#x8ba1;&#x65e5;&#x671f;"
+$labelUsageJson = "Telemetry JSON"
 
 $indexLines = @(
     "<!DOCTYPE html>",
@@ -86,6 +111,9 @@ $indexLines = @(
     "    a { color: var(--accent); text-decoration: none; }",
     "    a:hover { text-decoration: underline; }",
     "    .tip { margin-top: 16px; padding: 14px 16px; border-left: 4px solid var(--accent); border-radius: 12px; background: var(--accent-soft); }",
+    "    .chart-shell { margin-top: 18px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #fff8eb; }",
+    "    .chart-image { display: block; width: 100%; height: auto; }",
+    "    .muted { color: var(--muted); }",
     "  </style>",
     "</head>",
     "<body>",
@@ -120,6 +148,29 @@ $indexLines = @(
     "          <div class='value'>$updatedAt</div>",
     "        </article>",
     "      </div>",
+    "    </section>",
+    "",
+    "    <section class='section card'>",
+    "      <h2>$sectionUsageTitle</h2>",
+    "      <p>$sectionUsageBody</p>",
+    "      <div class='grid'>",
+    "        <article class='card'>",
+    "          <span class='label'>$labelCumulativeUsers</span>",
+    "          <div class='value'>$usageCumulativeUsers</div>",
+    "        </article>",
+    "        <article class='card'>",
+    "          <span class='label'>$labelActiveUsers</span>",
+    "          <div class='value'>$usageActiveUsers</div>",
+    "        </article>",
+    "        <article class='card'>",
+    "          <span class='label'>$labelLatestDay</span>",
+    "          <div class='value'>$usageLatestDay</div>",
+    "        </article>",
+    "      </div>",
+    "      <div class='chart-shell'>",
+    "        <img class='chart-image' src='users-history.svg' alt='STS2 mod user curve'>",
+    "      </div>",
+    "      <p class='muted'>$usageStatusText &middot; <a href='usage-stats.json'>$labelUsageJson</a></p>",
     "    </section>",
     "",
     "    <section class='section card'>",

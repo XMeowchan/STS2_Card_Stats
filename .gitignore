@@ -1,8 +1,12 @@
 dist/
 src/bin/
 src/obj/
+.godot/
+.wrangler/
 collector/node_modules/
 collector/public/
 syncer/node_modules/
+telemetry/node_modules/
+telemetry/.wrangler/
 *.user
 *.suo

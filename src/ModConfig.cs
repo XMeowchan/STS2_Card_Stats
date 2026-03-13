@@ -48,10 +48,10 @@ internal sealed class ModConfig
     public int ModUpdateTimeoutSeconds { get; set; } = 15;
 
     [JsonPropertyName("telemetry_enabled")]
-    public bool TelemetryEnabled { get; set; } = false;
+    public bool TelemetryEnabled { get; set; } = true;
 
     [JsonPropertyName("telemetry_endpoint")]
-    public string TelemetryEndpoint { get; set; } = string.Empty;
+    public string TelemetryEndpoint { get; set; } = "https://sts2-card-stats-telemetry.xmeowchan0415.workers.dev/v1/heartbeat";
 
     [JsonPropertyName("telemetry_timeout_seconds")]
     public int TelemetryTimeoutSeconds { get; set; } = 5;

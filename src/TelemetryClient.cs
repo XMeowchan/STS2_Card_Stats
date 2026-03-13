@@ -271,7 +271,9 @@ internal sealed class TelemetryClient
             CreatedAt = (CreatedAt ?? string.Empty).Trim();
             LastHeartbeatDay = (LastHeartbeatDay ?? string.Empty).Trim();
             LastSuccessAt = (LastSuccessAt ?? string.Empty).Trim();
-            if (ClientId.Length == 0)
+            if (ClientId.Length < 16
+                || ClientId.Length > 80
+                || ClientId.Any(static ch => !(char.IsLetterOrDigit(ch) || ch == '_' || ch == '-')))
             {
                 return false;
             }
