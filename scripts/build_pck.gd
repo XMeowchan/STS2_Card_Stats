@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 
 const MOD_ID := "HeyboxCardStatsOverlay"
 const PACK_ROOT := "res://pack_assets/%s" % MOD_ID
@@ -66,6 +66,8 @@ func _collect_files(source_dir: String, target_dir: String, files: Dictionary) -
         if name == "":
             break
         if name.begins_with("."):
+            continue
+        if name.begins_with("cover_source."):
             continue
 
         var source_path := source_dir.path_join(name)
