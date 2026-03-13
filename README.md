@@ -148,6 +148,8 @@
 
 安装程序会自动把 Mod 放进游戏的 `mods` 文件夹。
 
+如果你对安装包弹窗比较敏感，也可以直接下载 `portable.zip`，按下面的手动安装方式解压复制。
+
 ## 手动安装
 
 如果你拿到的是解压后的文件，而不是安装器，也可以手动安装：
@@ -162,6 +164,15 @@
 Slay the Spire 2\mods\HeyboxCardStatsOverlay
 ```
 
+## 安全说明
+
+- 当前发布的安装包还没有使用商业代码签名证书，所以 Windows 或浏览器可能会提示“未知发布者”或“此文件不常见”。这类提示更常见于“信誉不足”，不等于已经确认有病毒。
+- 本项目的公开发布渠道只有这个仓库的 [GitHub Releases](https://github.com/XMeowchan/STS2_Card_Stats/releases)。如果你是从别的网盘、群文件或二次转载处下载，建议改为从 Releases 重新获取。
+- 安装器本身只负责定位《Slay the Spire 2》目录，并把 `HeyboxCardStatsOverlay` 文件复制到游戏的 `mods` 文件夹，不会安装系统服务、计划任务或开机自启。
+- 如果你不想运行安装器，可以直接使用 `portable.zip` 手动安装；手动安装完成后的目标目录就是 `Slay the Spire 2\mods\HeyboxCardStatsOverlay`。
+- Mod 默认会联网做三件事：拉取卡牌统计数据、检查 GitHub Releases 更新，以及发送一条匿名心跳用于统计活跃安装量。
+- 如果你想关闭联网行为，可以编辑 Mod 目录里的 `config.json`，把 `remote_data_enabled`、`mod_update_enabled`、`telemetry_enabled` 改成 `false`。
+
 ## 怎么使用
 
 安装成功后，不需要额外操作：
@@ -171,6 +182,23 @@ Slay the Spire 2\mods\HeyboxCardStatsOverlay
 3. 在卡牌旁边查看统计面板
 
 ## 常见问题
+
+### 下载后提示“有风险”或“未知发布者”
+
+这是因为安装包目前没有商业代码签名证书，Windows/浏览器可能把它归类为“未知发布者”或“不常见下载”。
+
+如果你介意这类提示，建议这样处理：
+
+- 只从本仓库的 GitHub Releases 下载
+- 优先使用 `portable.zip` 手动安装
+- 自己用 Windows 安全中心或常用杀毒软件再扫描一遍
+- 不放心就直接查看源码，或等待后续补充正式签名
+
+### 这个 Mod 会上传什么数据
+
+- 默认会从远端拉取卡牌统计数据
+- 默认会去 GitHub Releases 检查更新
+- 默认每天发送一次匿名心跳，只包含匿名安装 ID、Mod 版本、平台、系统版本和上报时间
 
 ### 安装后没看到统计面板
 

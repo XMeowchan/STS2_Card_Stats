@@ -8,6 +8,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "Sts2InstallHelpers.ps1")
 
 $payloadArgs = @(
     "-ExecutionPolicy", "Bypass",
@@ -33,6 +34,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $manifest = Get-Content (Join-Path $projectRoot "mod_manifest.json") | ConvertFrom-Json
+$modId = $manifest.pck_name
+if (-not $modId) {
+    $modId = "HeyboxCardStatsOverlay"
+}
 $payloadDir = Join-Path $projectRoot "dist\installer\payload"
 $issPath = Join-Path $projectRoot "installer\HeyboxCardStatsOverlay.iss"
 
@@ -56,3 +61,6 @@ if (-not $isccPath) {
 if ($LASTEXITCODE -ne 0) {
     throw "ISCC failed."
 }
+
+$installerPath = Join-Path $projectRoot ("dist\installer\output\{0}-Setup-{1}.exe" -f $modId, $manifest.version)
+Invoke-AuthenticodeCodeSigning -Path $installerPath -Description "Heybox Card Stats Overlay Setup"

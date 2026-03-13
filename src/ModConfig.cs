@@ -8,6 +8,9 @@ internal sealed class ModConfig
     [JsonPropertyName("enabled")]
     public bool Enabled { get; set; } = true;
 
+    [JsonPropertyName("hide_from_multiplayer_mod_list")]
+    public bool HideFromMultiplayerModList { get; set; } = true;
+
     [JsonPropertyName("data_file")]
     public string DataFile { get; set; } = "cards.json";
 

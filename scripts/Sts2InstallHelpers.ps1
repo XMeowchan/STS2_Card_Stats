@@ -223,6 +223,139 @@ function Resolve-GodotExecutable {
     return $resolved[0]
 }
 
+function Resolve-SignToolExecutable {
+    $sdkRoots = @()
+    if ($env:WindowsSdkVerBinPath) {
+        $sdkRoots += $env:WindowsSdkVerBinPath
+    }
+
+    $sdkRoots += @(
+        "C:\Program Files (x86)\Windows Kits\10\bin",
+        "C:\Program Files\Windows Kits\10\bin"
+    )
+
+    $candidates = @()
+
+    $signtoolCommand = Get-Command signtool.exe -ErrorAction SilentlyContinue
+    if ($signtoolCommand) {
+        $candidates += $signtoolCommand.Source
+    }
+
+    foreach ($sdkRoot in ($sdkRoots | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath (Join-Path $sdkRoot "x64\signtool.exe")) {
+            $candidates += (Join-Path $sdkRoot "x64\signtool.exe")
+        }
+
+        Get-ChildItem -LiteralPath $sdkRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object {
+                $x64Path = Join-Path $_.FullName "x64\signtool.exe"
+                if (Test-Path -LiteralPath $x64Path) {
+                    $candidates += $x64Path
+                }
+            }
+    }
+
+    $resolved = @($candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique)
+    if (-not $resolved) {
+        throw "signtool.exe not found. Install the Windows SDK, then rerun the build."
+    }
+
+    return $resolved[0]
+}
+
+function Get-CodeSigningConfig {
+    $pfxPath = [Environment]::GetEnvironmentVariable("CODESIGN_PFX_PATH")
+    if ([string]::IsNullOrWhiteSpace($pfxPath)) {
+        return $null
+    }
+
+    $resolvedPfxPath = Resolve-ExistingPath -Path $pfxPath
+    return [pscustomobject]@{
+        PfxPath = $resolvedPfxPath
+        Password = [Environment]::GetEnvironmentVariable("CODESIGN_PFX_PASSWORD")
+        TimestampUrl = if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable("CODESIGN_TIMESTAMP_URL"))) {
+            "http://timestamp.digicert.com"
+        } else {
+            [Environment]::GetEnvironmentVariable("CODESIGN_TIMESTAMP_URL").Trim()
+        }
+    }
+}
+
+function Test-CodeSigningConfigured {
+    return $null -ne (Get-CodeSigningConfig)
+}
+
+function Test-AuthenticodeSignatureValid {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+
+    try {
+        $signature = Get-AuthenticodeSignature -FilePath $Path -ErrorAction Stop
+        return $signature.Status -eq [System.Management.Automation.SignatureStatus]::Valid
+    }
+    catch {
+        return $false
+    }
+}
+
+function Invoke-AuthenticodeCodeSigning {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [string]$Description
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "File to sign not found: $Path"
+    }
+
+    $config = Get-CodeSigningConfig
+    if ($null -eq $config) {
+        Write-Host "Code signing skipped for $Path because CODESIGN_PFX_PATH is not set."
+        return
+    }
+
+    if (Test-AuthenticodeSignatureValid -Path $Path) {
+        Write-Host "Code signing skipped for $Path because it already has a valid signature."
+        return
+    }
+
+    $signtool = Resolve-SignToolExecutable
+    $signArgs = @(
+        "sign",
+        "/fd", "SHA256",
+        "/td", "SHA256",
+        "/tr", $config.TimestampUrl,
+        "/f", $config.PfxPath
+    )
+    if ($null -ne $config.Password) {
+        $signArgs += @("/p", $config.Password)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Description)) {
+        $signArgs += @("/d", $Description.Trim())
+    }
+    $signArgs += $Path
+
+    & $signtool @signArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "signtool sign failed for $Path"
+    }
+
+    & $signtool verify "/pa" "/v" $Path
+    if ($LASTEXITCODE -ne 0) {
+        throw "signtool verify failed for $Path"
+    }
+
+    Write-Host "Signed artifact: $Path"
+}
+
 function Update-GodotAssetImports {
     param(
         [Parameter(Mandatory)]

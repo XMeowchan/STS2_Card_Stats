@@ -40,6 +40,8 @@ foreach ($artifactPath in @($dllPath, $pckPath)) {
     }
 }
 
+Invoke-AuthenticodeCodeSigning -Path $dllPath -Description "Heybox Card Stats Overlay"
+
 Write-Host "Detected game dir: $resolvedGameDir"
 Write-Host "Built DLL: $dllPath"
 Write-Host ("Verified PCK compatibility header: Godot {0}.{1}" -f $pckHeader.Major, $pckHeader.Minor)

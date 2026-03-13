@@ -83,6 +83,11 @@ if (Test-Path -LiteralPath $syncStatePath) {
     Copy-Item $syncStatePath (Join-Path $stagedModDir "sync_state.json") -Force
 }
 
+$stagedDllPath = Join-Path $stagedModDir "$modId.dll"
+if ((Test-CodeSigningConfigured) -and (-not (Test-AuthenticodeSignatureValid -Path $stagedDllPath))) {
+    Invoke-AuthenticodeCodeSigning -Path $stagedDllPath -Description "Heybox Card Stats Overlay"
+}
+
 if ($IncludeCollector) {
     $collectorDir = Join-Path $projectRoot "collector"
     $stagedCollectorDir = Join-Path $stagedModDir "_collector"

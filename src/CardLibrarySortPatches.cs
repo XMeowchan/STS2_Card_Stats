@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
@@ -21,7 +22,13 @@ internal static class CardLibraryReadyPatch
 
     private const string WinRateButtonName = "HeyboxWinRateSorter";
 
+    private const float SidebarLayoutGap = 8f;
+
     private static readonly FieldInfo? LastHoveredControlField = typeof(NCardLibrary).GetField("_lastHoveredControl", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    private static readonly FieldInfo? BackButtonShowPosField = typeof(NBackButton).GetField("_showPos", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    private static readonly FieldInfo? BackButtonHidePosField = typeof(NBackButton).GetField("_hidePos", BindingFlags.Instance | BindingFlags.NonPublic);
 
     private static void Postfix(NCardLibrary __instance)
     {
@@ -65,6 +72,7 @@ internal static class CardLibraryReadyPatch
                 OnStatSortReleased(__instance, CardLibraryStatSortMetric.WinRate, button)));
             pickRateButton.Connect(Control.SignalName.FocusEntered, Callable.From(() => SetLastHoveredControl(__instance, pickRateButton)));
             winRateButton.Connect(Control.SignalName.FocusEntered, Callable.From(() => SetLastHoveredControl(__instance, winRateButton)));
+            ScheduleSidebarLayoutAdjustment(__instance);
         }
         catch (Exception ex)
         {
@@ -77,7 +85,17 @@ internal static class CardLibraryReadyPatch
         const int duplicateWithoutSignalsFlags = 14;
         NCardViewSortButton button = (NCardViewSortButton)source.Duplicate(duplicateWithoutSignalsFlags);
         button.Name = name;
+        DetachVisualResources(button);
         return button;
+    }
+
+    private static void DetachVisualResources(NCardViewSortButton button)
+    {
+        TextureRect? buttonImage = button.GetNodeOrNull<TextureRect>("ButtonImage");
+        if (buttonImage?.Material != null)
+        {
+            buttonImage.Material = (Material)buttonImage.Material.Duplicate(true);
+        }
     }
 
     private static void OnStatSortReleased(NCardLibrary screen, CardLibraryStatSortMetric metric, NClickableControl button)
@@ -128,6 +146,72 @@ internal static class CardLibraryReadyPatch
     {
         screen.CallDeferred(NCardLibrary.MethodName.UpdateFilter, false);
     }
+
+    internal static void ScheduleSidebarLayoutAdjustment(NCardLibrary screen)
+    {
+        TaskHelper.RunSafely(AdjustSidebarLayoutAfterDelay(screen));
+    }
+
+    private static async Task AdjustSidebarLayoutAfterDelay(NCardLibrary screen)
+    {
+        SceneTree? tree = screen.GetTree();
+        if (tree == null)
+        {
+            return;
+        }
+
+        SceneTreeTimer timer = tree.CreateTimer(0.45);
+        await screen.ToSignal(timer, SceneTreeTimer.SignalName.Timeout);
+        AdjustSidebarLayout(screen);
+    }
+
+    internal static void AdjustSidebarLayout(NCardLibrary screen)
+    {
+        if (!CardLibrarySortStateStore.TryGet(screen, out CardLibrarySortState? state) || state == null)
+        {
+            return;
+        }
+
+        NBackButton? backButton = state.BackButton;
+        Control? bottomVBox = screen.GetNodeOrNull<Control>("Sidebar/MarginContainer/BottomVBox");
+        NCardViewSortButton? alphabetSorter = screen.GetNodeOrNull<NCardViewSortButton>("%AlphabetSorter");
+        if (backButton == null || bottomVBox == null || alphabetSorter == null)
+        {
+            return;
+        }
+
+        float lowestSorterBottom = Math.Max(
+            alphabetSorter.GlobalPosition.Y + alphabetSorter.Size.Y,
+            Math.Max(
+                state.PickRateButton.GlobalPosition.Y + state.PickRateButton.Size.Y,
+                state.WinRateButton.GlobalPosition.Y + state.WinRateButton.Size.Y));
+        float minBackTop = lowestSorterBottom + SidebarLayoutGap;
+        float maxBackTop = bottomVBox.GlobalPosition.Y - backButton.Size.Y - SidebarLayoutGap;
+        if (maxBackTop <= backButton.GlobalPosition.Y)
+        {
+            return;
+        }
+
+        float newBackTop = Math.Clamp(minBackTop, backButton.GlobalPosition.Y, maxBackTop);
+        float deltaY = newBackTop - backButton.GlobalPosition.Y;
+        if (deltaY <= 0f)
+        {
+            return;
+        }
+
+        Vector2 currentShowPos = BackButtonShowPosField?.GetValue(backButton) is Vector2 showPos
+            ? showPos
+            : backButton.GlobalPosition;
+        Vector2 currentHidePos = BackButtonHidePosField?.GetValue(backButton) is Vector2 hidePos
+            ? hidePos
+            : backButton.GlobalPosition;
+        Vector2 adjustedShowPos = currentShowPos + new Vector2(0f, deltaY);
+        Vector2 adjustedHidePos = currentHidePos + new Vector2(0f, deltaY);
+
+        BackButtonShowPosField?.SetValue(backButton, adjustedShowPos);
+        BackButtonHidePosField?.SetValue(backButton, adjustedHidePos);
+        backButton.GlobalPosition = adjustedShowPos;
+    }
 }
 
 [HarmonyPatch(typeof(NCardLibrary), "OnSubmenuOpened")]
@@ -136,6 +220,11 @@ internal static class CardLibraryOnSubmenuOpenedPatch
     private static void Prefix(NCardLibrary __instance)
     {
         CardLibraryReadyPatch.ResetCustomSort(__instance);
+    }
+
+    private static void Postfix(NCardLibrary __instance)
+    {
+        CardLibraryReadyPatch.ScheduleSidebarLayoutAdjustment(__instance);
     }
 }
 
@@ -319,7 +408,13 @@ internal static class CardLibrarySortStateStore
         NCardViewSortButton pickRateButton,
         NCardViewSortButton winRateButton)
     {
-        CardLibrarySortState state = new(screen, grid, pickRateButton, winRateButton);
+        NBackButton? backButton = screen.GetNodeOrNull<NBackButton>("BackButton");
+        CardLibrarySortState state = new(
+            screen,
+            grid,
+            pickRateButton,
+            winRateButton,
+            backButton);
         ScreenStates.Remove(screen);
         ScreenStates.Add(screen, state);
         GridStates.Remove(grid);
@@ -341,7 +436,8 @@ internal sealed class CardLibrarySortState(
     NCardLibrary screen,
     NCardLibraryGrid grid,
     NCardViewSortButton pickRateButton,
-    NCardViewSortButton winRateButton)
+    NCardViewSortButton winRateButton,
+    NBackButton? backButton)
 {
     public NCardLibrary Screen { get; } = screen;
 
@@ -350,6 +446,8 @@ internal sealed class CardLibrarySortState(
     public NCardViewSortButton PickRateButton { get; } = pickRateButton;
 
     public NCardViewSortButton WinRateButton { get; } = winRateButton;
+
+    public NBackButton? BackButton { get; } = backButton;
 
     public CardLibraryStatSortMetric ActiveMetric { get; set; }
 

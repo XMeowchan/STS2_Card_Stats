@@ -1,5 +1,6 @@
 ﻿{
   "enabled": true,
+  "hide_from_multiplayer_mod_list": true,
   "data_file": "cards.json",
   "label_language": "auto",
   "panel_width": 300,

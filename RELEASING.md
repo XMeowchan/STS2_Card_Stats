@@ -20,8 +20,26 @@ This will:
 
 - build the portable zip
 - build the installer exe
+- sign the built DLL and installer exe if `CODESIGN_PFX_PATH` is set
 - verify the PCK compatibility header stays at Godot 4.5
 - generate release notes in `dist\release\`
+
+## Optional code signing
+
+If you have a PFX code-signing certificate, set these environment variables before building:
+
+```powershell
+$env:CODESIGN_PFX_PATH="C:\codesign\your-cert.pfx"
+$env:CODESIGN_PFX_PASSWORD="your-pfx-password"
+```
+
+Optional:
+
+```powershell
+$env:CODESIGN_TIMESTAMP_URL="http://timestamp.digicert.com"
+```
+
+Without `CODESIGN_PFX_PATH`, the build still succeeds and simply skips signing.
 
 ## Optional GitHub upload
 
