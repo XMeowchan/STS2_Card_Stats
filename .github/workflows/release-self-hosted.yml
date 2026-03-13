@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate local toolchain
-        shell: pwsh
+        shell: powershell
         run: |
           if (-not (Get-Command powershell -ErrorAction SilentlyContinue)) { throw "PowerShell is required." }
           $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
@@ -44,7 +44,7 @@ jobs:
           if (-not $godot) { throw "Godot is required on the self-hosted runner." }
 
       - name: Publish release
-        shell: pwsh
+        shell: powershell
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
