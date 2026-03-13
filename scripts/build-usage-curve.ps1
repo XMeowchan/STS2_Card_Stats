@@ -99,33 +99,156 @@ function Format-Number {
     return $Value.ToString("N0", [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
+function New-ChartPoint {
+    param(
+        [double]$X,
+        [double]$Y
+    )
+
+    return [pscustomobject]@{
+        x = $X
+        y = $Y
+    }
+}
+
+function Convert-ToSmoothSvgPath {
+    param([object[]]$Points)
+
+    if (-not $Points -or $Points.Count -eq 0) {
+        return ""
+    }
+
+    $segments = New-Object System.Collections.Generic.List[string]
+    $segments.Add(("M {0:F2},{1:F2}" -f $Points[0].x, $Points[0].y))
+
+    if ($Points.Count -eq 1) {
+        return $segments[0]
+    }
+
+    for ($index = 0; $index -lt $Points.Count - 1; $index += 1) {
+        $p0 = if ($index -gt 0) { $Points[$index - 1] } else { $Points[$index] }
+        $p1 = $Points[$index]
+        $p2 = $Points[$index + 1]
+        $p3 = if ($index + 2 -lt $Points.Count) { $Points[$index + 2] } else { $Points[$index + 1] }
+
+        $cp1x = $p1.x + (($p2.x - $p0.x) / 6.0)
+        $cp1y = $p1.y + (($p2.y - $p0.y) / 6.0)
+        $cp2x = $p2.x - (($p3.x - $p1.x) / 6.0)
+        $cp2y = $p2.y - (($p3.y - $p1.y) / 6.0)
+
+        $segments.Add(("C {0:F2},{1:F2} {2:F2},{3:F2} {4:F2},{5:F2}" -f $cp1x, $cp1y, $cp2x, $cp2y, $p2.x, $p2.y))
+    }
+
+    return [string]::Join(" ", $segments)
+}
+
+function Get-DateTickIndexes {
+    param(
+        [object[]]$Rows,
+        [int]$TickCount = 5
+    )
+
+    if (-not $Rows -or $Rows.Count -eq 0) {
+        return @()
+    }
+
+    if ($Rows.Count -le $TickCount) {
+        return @(0..($Rows.Count - 1))
+    }
+
+    $indexes = New-Object System.Collections.Generic.List[int]
+    $indexes.Add(0)
+
+    for ($slot = 1; $slot -lt ($TickCount - 1); $slot += 1) {
+        $candidate = [int][math]::Round((($Rows.Count - 1) * $slot) / ($TickCount - 1))
+        if (-not $indexes.Contains($candidate)) {
+            $indexes.Add($candidate)
+        }
+    }
+
+    if (-not $indexes.Contains($Rows.Count - 1)) {
+        $indexes.Add($Rows.Count - 1)
+    }
+
+    return $indexes.ToArray() | Sort-Object
+}
+
+function Format-AxisDay {
+    param(
+        [string]$Day,
+        [int]$SeriesLength,
+        [bool]$IncludeYear = $false
+    )
+
+    $culture = [System.Globalization.CultureInfo]::InvariantCulture
+
+    try {
+        $parsed = [DateTime]::ParseExact($Day, "yyyy-MM-dd", $culture)
+    }
+    catch {
+        return $Day
+    }
+
+    if ($SeriesLength -ge 120) {
+        return $parsed.ToString($(if ($IncludeYear) { "MMM yyyy" } else { "MMM" }), $culture)
+    }
+
+    if ($SeriesLength -ge 45) {
+        return $parsed.ToString($(if ($IncludeYear) { "yyyy-MM-dd" } else { "MM-dd" }), $culture)
+    }
+
+    return $parsed.ToString($(if ($IncludeYear) { "yyyy-MM-dd" } else { "MM-dd" }), $culture)
+}
+
 function New-PlaceholderUsageChartSvg {
     param([string]$StatusText)
 
     $safeStatus = if ([string]::IsNullOrWhiteSpace($StatusText)) { "Telemetry not configured yet." } else { $StatusText }
     $lines = @(
-        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 420' role='img' aria-labelledby='title desc'>",
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1240 436' role='img' aria-labelledby='title desc'>",
         "  <title id='title'>STS2 Mod User Curve</title>",
         "  <desc id='desc'>Placeholder chart while telemetry is unavailable.</desc>",
         "  <defs>",
-        "    <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>",
-        "      <stop offset='0%' stop-color='#fffaf0'/>",
-        "      <stop offset='100%' stop-color='#efe3c5'/>",
+        "    <linearGradient id='shell' x1='0%' y1='0%' x2='100%' y2='100%'>",
+        "      <stop offset='0%' stop-color='#ece1c8'/>",
+        "      <stop offset='100%' stop-color='#e2d4b5'/>",
+        "    </linearGradient>",
+        "    <linearGradient id='plotFill' x1='0%' y1='0%' x2='0%' y2='100%'>",
+        "      <stop offset='0%' stop-color='#e5c88a' stop-opacity='0.26'/>",
+        "      <stop offset='100%' stop-color='#e5c88a' stop-opacity='0.03'/>",
         "    </linearGradient>",
         "  </defs>",
         "  <style>",
         "    .font { font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; }",
-        "    .eyebrow { font-size: 16px; font-weight: 700; fill: #9a6b17; letter-spacing: 0.08em; text-transform: uppercase; }",
-        "    .title { font-size: 36px; font-weight: 700; fill: #1f252b; }",
-        "    .body { font-size: 18px; fill: #5a6570; }",
+        "    .eyebrow { font-size: 16px; font-weight: 700; fill: #996813; letter-spacing: 0.08em; text-transform: uppercase; }",
+        "    .title { font-size: 36px; font-weight: 700; fill: #15263b; }",
+        "    .body { font-size: 18px; fill: #5d6670; }",
+        "    .metricLabel { font-size: 15px; fill: #5d6670; }",
+        "    .metricValue { font-size: 26px; font-weight: 700; fill: #15263b; }",
+        "    .grid { stroke: #e8dcc2; stroke-width: 1; }",
         "  </style>",
-        "  <rect width='1200' height='420' rx='28' fill='url(#bg)'/>",
-        "  <rect x='28' y='28' width='1144' height='364' rx='24' fill='#fffdf8' stroke='#e2d6b7'/>",
-        "  <text x='60' y='80' class='font eyebrow'>Anonymous telemetry</text>",
-        "  <text x='60' y='128' class='font title'>STS2 Mod User Curve</text>",
-        "  <text x='60' y='172' class='font body'>This chart will appear after the telemetry worker is deployed.</text>",
-        "  <text x='60' y='206' class='font body'>$safeStatus</text>",
-        "  <text x='60' y='338' class='font body'>README uses this file directly, so you can keep the image path stable.</text>",
+        "  <rect width='1240' height='436' rx='34' fill='url(#shell)'/>",
+        "  <rect x='32' y='28' width='1176' height='380' rx='26' fill='#fffdf8' stroke='#d7c8a6'/>",
+        "  <text x='66' y='82' class='font eyebrow'>Anonymous telemetry</text>",
+        "  <text x='66' y='128' class='font title'>STS2 Mod User Curve</text>",
+        "  <text x='66' y='158' class='font body'>Daily cumulative installations observed by the telemetry worker.</text>",
+        "  <text x='876' y='84' class='font metricLabel'>Cumulative</text>",
+        "  <text x='876' y='120' class='font metricValue'>--</text>",
+        "  <text x='1012' y='84' class='font metricLabel'>Active</text>",
+        "  <text x='1012' y='120' class='font metricValue'>--</text>",
+        "  <text x='1120' y='84' text-anchor='end' class='font metricLabel'>New</text>",
+        "  <text x='1120' y='120' text-anchor='end' class='font metricValue'>--</text>",
+        "  <line x1='80' y1='194' x2='1162' y2='194' class='grid'/>",
+        "  <line x1='80' y1='256' x2='1162' y2='256' class='grid'/>",
+        "  <line x1='80' y1='318' x2='1162' y2='318' class='grid'/>",
+        "  <path d='M 80,318 C 306,316 522,314 742,310 C 906,307 1038,303 1162,300 L 1162,346 L 80,346 Z' fill='url(#plotFill)'/>",
+        "  <path d='M 80,318 C 306,316 522,314 742,310 C 906,307 1038,303 1162,300' fill='none' stroke='#c88a21' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>",
+        "  <circle cx='80' cy='318' r='5' fill='#c88a21'/>",
+        "  <circle cx='1162' cy='300' r='6' fill='#c88a21' stroke='#fffdf8' stroke-width='3'/>",
+        "  <text x='66' y='278' class='font body'>This chart appears automatically after the telemetry worker starts receiving heartbeats.</text>",
+        "  <text x='66' y='306' class='font body'>$safeStatus</text>",
+        "  <text x='66' y='382' class='font body'>Range: awaiting telemetry data</text>",
+        "  <text x='1140' y='382' text-anchor='end' class='font body'>Updated: pending</text>",
         "</svg>"
     )
 
@@ -140,12 +263,12 @@ function New-UsageChartSvg {
     }
 
     $culture = [System.Globalization.CultureInfo]::InvariantCulture
-    $width = 1200
-    $height = 420
-    $plotLeft = 72.0
-    $plotTop = 164.0
-    $plotWidth = 1088.0
-    $plotHeight = 192.0
+    $width = 1240
+    $height = 436
+    $plotLeft = 82.0
+    $plotTop = 176.0
+    $plotWidth = 1080.0
+    $plotHeight = 164.0
     $rowCount = [double][math]::Max(1, $Rows.Count - 1)
     $maxUsers = Get-NiceUpperBound -Value ([int](($Rows | Measure-Object -Property cumulative_users -Maximum).Maximum))
     $yTicks = 4
@@ -159,23 +282,20 @@ function New-UsageChartSvg {
         }
     }
 
-    $points = New-Object System.Collections.Generic.List[string]
-    $areaPoints = New-Object System.Collections.Generic.List[string]
+    $points = New-Object System.Collections.Generic.List[object]
     for ($index = 0; $index -lt $Rows.Count; $index += 1) {
         $row = $Rows[$index]
         $x = $plotLeft + ($plotWidth * $index / $rowCount)
         $ratio = if ($maxUsers -le 0) { 0.0 } else { [double]$row.cumulative_users / [double]$maxUsers }
         $y = $plotTop + $plotHeight - ($plotHeight * $ratio)
-        $point = ("{0:F2},{1:F2}" -f $x, $y)
-        $points.Add($point)
-        $areaPoints.Add($point)
+        $points.Add((New-ChartPoint -X $x -Y $y))
     }
 
     $baselineY = $plotTop + $plotHeight
-    $areaPath = "M $($points[0]) L $([string]::Join(' L ', $areaPoints)) L {0:F2},{1:F2} L {2:F2},{3:F2} Z" -f (
-        $plotLeft + $plotWidth
-    ), $baselineY, $plotLeft, $baselineY
-    $linePath = "M $($points[0]) L $([string]::Join(' L ', $points))"
+    $linePath = Convert-ToSmoothSvgPath -Points $points.ToArray()
+    $lastPoint = $points[$points.Count - 1]
+    $firstPoint = $points[0]
+    $areaPath = "$linePath L $(("{0:F2},{1:F2}" -f $lastPoint.x, $baselineY)) L $(("{0:F2},{1:F2}" -f $firstPoint.x, $baselineY)) Z"
 
     $latest = $Rows[-1]
     $first = $Rows[0]
@@ -191,73 +311,69 @@ function New-UsageChartSvg {
         }
     }
 
-    $xLabelIndexes = @(0)
-    foreach ($fraction in @(0.25, 0.5, 0.75, 1.0)) {
-        $candidate = [int][math]::Round(($Rows.Count - 1) * $fraction)
-        if (-not $xLabelIndexes.Contains($candidate)) {
-            $xLabelIndexes += $candidate
-        }
-    }
-    $xLabelIndexes = $xLabelIndexes | Sort-Object
+    $xLabelIndexes = Get-DateTickIndexes -Rows $Rows -TickCount 5
+    $showYearOnEdges = $first.day.Substring(0, 4) -ne $latest.day.Substring(0, 4)
 
     $lines = @(
         "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 $width $height' role='img' aria-labelledby='title desc'>",
         "  <title id='title'>STS2 Mod User Curve</title>",
         "  <desc id='desc'>Cumulative anonymous mod users by day.</desc>",
         "  <defs>",
-        "    <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>",
-        "      <stop offset='0%' stop-color='#fffaf0'/>",
-        "      <stop offset='100%' stop-color='#efe3c5'/>",
+        "    <linearGradient id='shell' x1='0%' y1='0%' x2='100%' y2='100%'>",
+        "      <stop offset='0%' stop-color='#ece1c8'/>",
+        "      <stop offset='100%' stop-color='#e2d4b5'/>",
         "    </linearGradient>",
         "    <linearGradient id='fill' x1='0%' y1='0%' x2='0%' y2='100%'>",
-        "      <stop offset='0%' stop-color='#e0b85f' stop-opacity='0.46'/>",
-        "      <stop offset='100%' stop-color='#e0b85f' stop-opacity='0.04'/>",
+        "      <stop offset='0%' stop-color='#e1be76' stop-opacity='0.42'/>",
+        "      <stop offset='100%' stop-color='#e1be76' stop-opacity='0.04'/>",
         "    </linearGradient>",
         "  </defs>",
         "  <style>",
         "    .font { font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; }",
-        "    .eyebrow { font-size: 16px; font-weight: 700; fill: #9a6b17; letter-spacing: 0.08em; text-transform: uppercase; }",
-        "    .title { font-size: 36px; font-weight: 700; fill: #1f252b; }",
-        "    .body { font-size: 16px; fill: #5a6570; }",
-        "    .metricLabel { font-size: 14px; fill: #6c7780; }",
-        "    .metricValue { font-size: 28px; font-weight: 700; fill: #1f252b; }",
-        "    .axis { font-size: 12px; fill: #6c7780; }",
-        "    .grid { stroke: #eadfc6; stroke-width: 1; }",
+        "    .eyebrow { font-size: 16px; font-weight: 700; fill: #996813; letter-spacing: 0.08em; text-transform: uppercase; }",
+        "    .title { font-size: 36px; font-weight: 700; fill: #15263b; }",
+        "    .body { font-size: 18px; fill: #5d6670; }",
+        "    .metricLabel { font-size: 15px; fill: #5d6670; }",
+        "    .metricValue { font-size: 26px; font-weight: 700; fill: #15263b; }",
+        "    .axis { font-size: 12px; fill: #5d6670; }",
+        "    .grid { stroke: #e8dcc2; stroke-width: 1; }",
         "  </style>",
-        "  <rect width='$width' height='$height' rx='28' fill='url(#bg)'/>",
-        "  <rect x='28' y='28' width='1144' height='364' rx='24' fill='#fffdf8' stroke='#e2d6b7'/>",
-        "  <text x='60' y='80' class='font eyebrow'>Anonymous telemetry</text>",
-        "  <text x='60' y='128' class='font title'>STS2 Mod User Curve</text>",
-        "  <text x='60' y='154' class='font body'>Daily cumulative installations observed by the telemetry worker.</text>",
-        "  <text x='860' y='84' class='font metricLabel'>Cumulative</text>",
-        "  <text x='860' y='118' class='font metricValue'>$(Format-Number -Value $latest.cumulative_users)</text>",
-        "  <text x='1000' y='84' class='font metricLabel'>Active</text>",
-        "  <text x='1000' y='118' class='font metricValue'>$(Format-Number -Value $latest.active_users)</text>",
-        "  <text x='1096' y='84' text-anchor='end' class='font metricLabel'>New</text>",
-        "  <text x='1096' y='118' text-anchor='end' class='font metricValue'>$(Format-Number -Value $latest.new_users)</text>"
+        "  <rect width='$width' height='$height' rx='34' fill='url(#shell)'/>",
+        "  <rect x='32' y='28' width='1176' height='380' rx='26' fill='#fffdf8' stroke='#d7c8a6'/>",
+        "  <text x='66' y='82' class='font eyebrow'>Anonymous telemetry</text>",
+        "  <text x='66' y='128' class='font title'>STS2 Mod User Curve</text>",
+        "  <text x='66' y='158' class='font body'>Daily cumulative installations observed by the telemetry worker.</text>",
+        "  <text x='876' y='84' class='font metricLabel'>Cumulative</text>",
+        "  <text x='876' y='120' class='font metricValue'>$(Format-Number -Value $latest.cumulative_users)</text>",
+        "  <text x='1012' y='84' class='font metricLabel'>Active</text>",
+        "  <text x='1012' y='120' class='font metricValue'>$(Format-Number -Value $latest.active_users)</text>",
+        "  <text x='1120' y='84' text-anchor='end' class='font metricLabel'>New</text>",
+        "  <text x='1120' y='120' text-anchor='end' class='font metricValue'>$(Format-Number -Value $latest.new_users)</text>"
     )
 
     foreach ($tick in $yLabels) {
         $y = "{0:F2}" -f $tick.y
         $lines += "  <line x1='$plotLeft' y1='$y' x2='$(("{0:F2}" -f ($plotLeft + $plotWidth)))' y2='$y' class='grid'/>"
-        $lines += "  <text x='60' y='$(("{0:F2}" -f ($tick.y + 4)))' class='font axis'>$(Format-Number -Value $tick.value)</text>"
+        $lines += "  <text x='66' y='$(("{0:F2}" -f ($tick.y + 4)))' class='font axis'>$(Format-Number -Value $tick.value)</text>"
     }
 
     $lines += "  <path d='$areaPath' fill='url(#fill)'/>"
-    $lines += "  <path d='$linePath' fill='none' stroke='#c78a1f' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>"
+    $lines += "  <path d='$linePath' fill='none' stroke='#d8522b' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>"
+    $lines += "  <circle cx='$(("{0:F2}" -f $firstPoint.x))' cy='$(("{0:F2}" -f $firstPoint.y))' r='5' fill='#d39a29'/>"
 
     foreach ($labelIndex in $xLabelIndexes) {
         $row = $Rows[$labelIndex]
         $x = $plotLeft + ($plotWidth * $labelIndex / $rowCount)
         $formattedX = "{0:F2}" -f $x
         $lines += "  <line x1='$formattedX' y1='$(("{0:F2}" -f ($plotTop + $plotHeight)))' x2='$formattedX' y2='$(("{0:F2}" -f ($plotTop + $plotHeight + 8)))' stroke='#b6a57e' stroke-width='1'/>"
-        $lines += "  <text x='$formattedX' y='$(("{0:F2}" -f ($plotTop + $plotHeight + 26)))' text-anchor='middle' class='font axis'>$($row.day)</text>"
+        $labelText = Format-AxisDay -Day $row.day -SeriesLength $Rows.Count -IncludeYear (($showYearOnEdges -and ($labelIndex -eq 0 -or $labelIndex -eq ($Rows.Count - 1))))
+        $lines += "  <text x='$formattedX' y='$(("{0:F2}" -f ($plotTop + $plotHeight + 28)))' text-anchor='middle' class='font axis'>$labelText</text>"
     }
 
     $lines += @(
-        "  <circle cx='$(("{0:F2}" -f ($plotLeft + $plotWidth)))' cy='$(("{0:F2}" -f ($plotTop + $plotHeight - ($plotHeight * ([double]$latest.cumulative_users / [double][math]::Max(1, $maxUsers))))))' r='6' fill='#c78a1f' stroke='#fffdf8' stroke-width='3'/>",
-        "  <text x='60' y='372' class='font body'>Range: $($first.day) to $latestDayText</text>",
-        "  <text x='1140' y='372' text-anchor='end' class='font body'>Updated: $generatedAtText</text>",
+        "  <circle cx='$(("{0:F2}" -f $lastPoint.x))' cy='$(("{0:F2}" -f $lastPoint.y))' r='6' fill='#c88a21' stroke='#fffdf8' stroke-width='3'/>",
+        "  <text x='66' y='382' class='font body'>Range: $($first.day) to $latestDayText</text>",
+        "  <text x='1140' y='382' text-anchor='end' class='font body'>Updated: $generatedAtText</text>",
         "</svg>"
     )
 
