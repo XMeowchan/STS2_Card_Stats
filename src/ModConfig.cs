@@ -38,6 +38,15 @@ internal sealed class ModConfig
     [JsonPropertyName("remote_timeout_seconds")]
     public int RemoteTimeoutSeconds { get; set; } = 5;
 
+    [JsonPropertyName("mod_update_enabled")]
+    public bool ModUpdateEnabled { get; set; } = false;
+
+    [JsonPropertyName("mod_update_github_repo")]
+    public string ModUpdateGithubRepo { get; set; } = "XMeowchan/STS2_Card_Stats";
+
+    [JsonPropertyName("mod_update_timeout_seconds")]
+    public int ModUpdateTimeoutSeconds { get; set; } = 15;
+
     public static ModConfig Load(string path)
     {
         ModConfig defaults = new ModConfig();
@@ -86,6 +95,8 @@ internal sealed class ModConfig
         RemoteDataUrl = (RemoteDataUrl ?? string.Empty).Trim();
         RemoteRefreshMinutes = Math.Clamp(RemoteRefreshMinutes, 5, 1440);
         RemoteTimeoutSeconds = Math.Clamp(RemoteTimeoutSeconds, 2, 30);
+        ModUpdateGithubRepo = (ModUpdateGithubRepo ?? string.Empty).Trim().Trim('/');
+        ModUpdateTimeoutSeconds = Math.Clamp(ModUpdateTimeoutSeconds, 5, 60);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()

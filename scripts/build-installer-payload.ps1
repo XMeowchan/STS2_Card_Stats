@@ -26,6 +26,8 @@ foreach ($artifactPath in $requiredArtifacts) {
 }
 
 Set-PckCompatibilityHeader -Path (Join-Path $buildOut "$modId.pck") -EngineMinorVersion 5
+$pckHeader = Assert-PckCompatibilityHeader -Path (Join-Path $buildOut "$modId.pck") -ExpectedMajor 4 -MaxMinor 5
+Write-Host ("Verified PCK compatibility header: Godot {0}.{1}" -f $pckHeader.Major, $pckHeader.Minor)
 
 if (Test-Path -LiteralPath $stagedModDir) {
     Remove-Item -LiteralPath $stagedModDir -Recurse -Force

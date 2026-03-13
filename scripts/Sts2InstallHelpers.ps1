@@ -278,3 +278,40 @@ function Set-PckCompatibilityHeader {
     $pckBytes[15] = 0
     [System.IO.File]::WriteAllBytes($Path, $pckBytes)
 }
+
+function Get-PckCompatibilityHeader {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "PCK file not found: $Path"
+    }
+
+    [byte[]]$pckBytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($pckBytes.Length -lt 16) {
+        throw "PCK header too small."
+    }
+
+    [pscustomobject]@{
+        Major = [System.BitConverter]::ToInt32($pckBytes, 8)
+        Minor = [System.BitConverter]::ToInt32($pckBytes, 12)
+    }
+}
+
+function Assert-PckCompatibilityHeader {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [int]$ExpectedMajor = 4,
+        [int]$MaxMinor = 5
+    )
+
+    $header = Get-PckCompatibilityHeader -Path $Path
+    if ($header.Major -ne $ExpectedMajor -or $header.Minor -gt $MaxMinor) {
+        throw "PCK compatibility header is $($header.Major).$($header.Minor), expected <= Godot $ExpectedMajor.$MaxMinor."
+    }
+
+    return $header
+}

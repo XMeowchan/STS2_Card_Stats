@@ -23,6 +23,8 @@ internal static class HoverTipSetCreateAndShowPatch
 
     private static readonly FieldInfo? MerchantCardNodeField = typeof(NMerchantCard).GetField("_cardNode", BindingFlags.Instance | BindingFlags.NonPublic);
 
+    private static readonly FieldInfo? InspectCardScreenCardField = typeof(NInspectCardScreen).GetField("_card", BindingFlags.Instance | BindingFlags.NonPublic);
+
     private static bool _loggedInjection;
 
     private static void Prefix(Control owner, ref IEnumerable<IHoverTip> hoverTips)
@@ -119,6 +121,20 @@ internal static class HoverTipSetCreateAndShowPatch
             && merchantCardNode.Model != null)
         {
             cardModel = merchantCardNode.Model;
+            return true;
+        }
+
+        NInspectCardScreen? inspectCardScreen = owner as NInspectCardScreen;
+        if (inspectCardScreen == null)
+        {
+            TryGetAncestor(owner, out inspectCardScreen);
+        }
+
+        if (inspectCardScreen != null
+            && InspectCardScreenCardField?.GetValue(inspectCardScreen) is NCard inspectCardNode
+            && inspectCardNode.Model != null)
+        {
+            cardModel = inspectCardNode.Model;
             return true;
         }
 
