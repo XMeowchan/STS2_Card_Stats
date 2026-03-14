@@ -446,15 +446,31 @@ function Set-PckCompatibilityHeader {
     param(
         [Parameter(Mandatory)]
         [string]$Path,
-        [int]$EngineMinorVersion = 5
+        [int]$EngineMinorVersion = 5,
+        [int]$RetryCount = 10,
+        [int]$RetryDelayMilliseconds = 300
     )
 
     if (-not (Test-Path -LiteralPath $Path)) {
         throw "PCK file not found: $Path"
     }
 
-    [byte[]]$pckBytes = [System.IO.File]::ReadAllBytes($Path)
-    if ($pckBytes.Length -lt 16) {
+    [byte[]]$pckBytes = $null
+    for ($attempt = 1; $attempt -le $RetryCount; $attempt++) {
+        try {
+            $pckBytes = [System.IO.File]::ReadAllBytes($Path)
+            break
+        }
+        catch {
+            if ($attempt -eq $RetryCount) {
+                throw
+            }
+
+            Start-Sleep -Milliseconds $RetryDelayMilliseconds
+        }
+    }
+
+    if ($null -eq $pckBytes -or $pckBytes.Length -lt 16) {
         throw "PCK header too small."
     }
 
@@ -467,21 +483,49 @@ function Set-PckCompatibilityHeader {
     $pckBytes[13] = 0
     $pckBytes[14] = 0
     $pckBytes[15] = 0
-    [System.IO.File]::WriteAllBytes($Path, $pckBytes)
+    for ($attempt = 1; $attempt -le $RetryCount; $attempt++) {
+        try {
+            [System.IO.File]::WriteAllBytes($Path, $pckBytes)
+            return
+        }
+        catch {
+            if ($attempt -eq $RetryCount) {
+                throw
+            }
+
+            Start-Sleep -Milliseconds $RetryDelayMilliseconds
+        }
+    }
 }
 
 function Get-PckCompatibilityHeader {
     param(
         [Parameter(Mandatory)]
-        [string]$Path
+        [string]$Path,
+        [int]$RetryCount = 10,
+        [int]$RetryDelayMilliseconds = 300
     )
 
     if (-not (Test-Path -LiteralPath $Path)) {
         throw "PCK file not found: $Path"
     }
 
-    [byte[]]$pckBytes = [System.IO.File]::ReadAllBytes($Path)
-    if ($pckBytes.Length -lt 16) {
+    [byte[]]$pckBytes = $null
+    for ($attempt = 1; $attempt -le $RetryCount; $attempt++) {
+        try {
+            $pckBytes = [System.IO.File]::ReadAllBytes($Path)
+            break
+        }
+        catch {
+            if ($attempt -eq $RetryCount) {
+                throw
+            }
+
+            Start-Sleep -Milliseconds $RetryDelayMilliseconds
+        }
+    }
+
+    if ($null -eq $pckBytes -or $pckBytes.Length -lt 16) {
         throw "PCK header too small."
     }
 
