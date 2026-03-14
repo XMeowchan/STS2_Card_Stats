@@ -17,6 +17,8 @@ internal sealed class TelemetryClient
 
     private readonly string _statePath;
 
+    private readonly string _legacyStatePath;
+
     private readonly object _stateSync = new();
 
     private int _heartbeatQueued;
@@ -27,7 +29,8 @@ internal sealed class TelemetryClient
     {
         _modDirectory = modDirectory ?? string.Empty;
         _config = config;
-        _statePath = Path.Combine(_modDirectory, StateFileName);
+        _legacyStatePath = Path.Combine(_modDirectory, StateFileName);
+        _statePath = ResolveStatePath(_legacyStatePath);
     }
 
     public void QueueDailyHeartbeat()
@@ -108,20 +111,17 @@ internal sealed class TelemetryClient
     {
         lock (_stateSync)
         {
-            try
+            TelemetryState? existing = TryReadState(_statePath);
+            if (existing != null)
             {
-                if (File.Exists(_statePath))
-                {
-                    string json = File.ReadAllText(_statePath);
-                    TelemetryState? parsed = JsonSerializer.Deserialize<TelemetryState>(json, JsonOptions);
-                    if (parsed != null && parsed.Normalize())
-                    {
-                        return parsed;
-                    }
-                }
+                DeleteLegacyStateFileIfNeeded();
+                return existing;
             }
-            catch
+
+            TelemetryState? migrated = TryMigrateLegacyState();
+            if (migrated != null)
             {
+                return migrated;
             }
 
             TelemetryState created = TelemetryState.CreateNew();
@@ -129,6 +129,48 @@ internal sealed class TelemetryClient
             Log.Info("HeyboxCardStatsOverlay: generated a new anonymous telemetry installation id.", 2);
             return created;
         }
+    }
+
+    private TelemetryState? TryReadState(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            string json = File.ReadAllText(path);
+            TelemetryState? parsed = JsonSerializer.Deserialize<TelemetryState>(json, JsonOptions);
+            if (parsed != null && parsed.Normalize())
+            {
+                return parsed;
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    private TelemetryState? TryMigrateLegacyState()
+    {
+        if (string.Equals(_statePath, _legacyStatePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        TelemetryState? legacy = TryReadState(_legacyStatePath);
+        if (legacy == null)
+        {
+            return null;
+        }
+
+        WriteState(legacy);
+        DeleteLegacyStateFileIfNeeded();
+        Log.Info($"HeyboxCardStatsOverlay: migrated anonymous telemetry state to '{_statePath}'.", 2);
+        return legacy;
     }
 
     private void WriteState(TelemetryState state)
@@ -141,6 +183,23 @@ internal sealed class TelemetryClient
 
         string json = JsonSerializer.Serialize(state, JsonOptionsIndented);
         File.WriteAllText(_statePath, json, Utf8NoBom);
+    }
+
+    private void DeleteLegacyStateFileIfNeeded()
+    {
+        if (string.Equals(_statePath, _legacyStatePath, StringComparison.OrdinalIgnoreCase)
+            || !File.Exists(_legacyStatePath))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(_legacyStatePath);
+        }
+        catch
+        {
+        }
     }
 
     private string ReadLocalVersion()
@@ -194,6 +253,17 @@ internal sealed class TelemetryClient
         }
 
         return "unknown";
+    }
+
+    private static string ResolveStatePath(string legacyStatePath)
+    {
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
+        {
+            return legacyStatePath;
+        }
+
+        return Path.Combine(localAppData, ModEntry.ModId, StateFileName);
     }
 
     private static readonly HttpClient SharedHttpClient = new();

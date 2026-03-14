@@ -35,10 +35,10 @@ $content = @"
 
 ## Changes
 
-- Add card library sort buttons for pick rate and win rate.
-- Publish anonymous user curve data for the GitHub README.
-- Refresh branding, localization text, and packaged mod metadata.
-- Rework build, portable zip, and installer scripts around one shared artifact pipeline.
+- Move anonymous telemetry state into LocalAppData instead of the mod folder.
+- Migrate existing telemetry_state.json forward automatically on first launch after update.
+- Reduce duplicate user counts caused by copying a fully used mod directory between machines.
+- Keep the existing auto-update and GitHub README usage curve pipeline intact.
 
 ## Assets
 
