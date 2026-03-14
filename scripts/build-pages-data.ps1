@@ -45,6 +45,14 @@ $usageStatusText = if ($null -ne $usageStats -and -not [string]::IsNullOrWhiteSp
 else {
     "Telemetry not configured yet."
 }
+$usageAssetVersion = if ($null -ne $usageStats -and -not [string]::IsNullOrWhiteSpace([string]$usageStats.generated_at)) {
+    [Uri]::EscapeDataString([string]$usageStats.generated_at)
+}
+else {
+    [Uri]::EscapeDataString($updatedAt)
+}
+$usageStatsHref = "usage-stats.json?v=$usageAssetVersion"
+$usageChartHref = "users-history.svg?v=$usageAssetVersion"
 $usageCumulativeUsers = if ($usageHasData -and $null -ne $usageStats.latest) { "{0:N0}" -f [int]$usageStats.latest.cumulative_users } else { "--" }
 $usageActiveUsers = if ($usageHasData -and $null -ne $usageStats.latest) { "{0:N0}" -f [int]$usageStats.latest.active_users } else { "--" }
 $usageLatestDay = if ($usageHasData -and $null -ne $usageStats.latest -and -not [string]::IsNullOrWhiteSpace([string]$usageStats.latest.day)) { [string]$usageStats.latest.day } else { "--" }
@@ -158,10 +166,10 @@ $indexLines = @(
     "    <section class='usage-stage'>",
     "      <div class='usage-stage-head'>",
     "        <h2>$sectionUsageTitle</h2>",
-    "        <a class='usage-link' href='usage-stats.json'>$labelUsageJson</a>",
+    "        <a class='usage-link' href='$usageStatsHref'>$labelUsageJson</a>",
     "      </div>",
     "      <div class='chart-shell chart-shell--standalone'>",
-    "        <img class='chart-image' src='users-history.svg' alt='STS2 mod user curve'>",
+    "        <img class='chart-image' src='$usageChartHref' alt='STS2 mod user curve'>",
     "      </div>",
     "    </section>",
     "",
