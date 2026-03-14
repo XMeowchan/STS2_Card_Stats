@@ -72,10 +72,42 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $buildArgs = @(
+            "-ExecutionPolicy", "Bypass",
+            "-File", ".\scripts\build-mod-artifacts.ps1"
+          )
+          & powershell @buildArgs
+          if ($LASTEXITCODE -ne 0) {
+            throw "build-mod-artifacts failed."
+          }
+
+          Start-Sleep -Seconds 5
+
+          $portableArgs = @(
+            "-ExecutionPolicy", "Bypass",
+            "-File", ".\scripts\build-portable-package.ps1",
+            "-SkipBuild"
+          )
+          & powershell @portableArgs
+          if ($LASTEXITCODE -ne 0) {
+            throw "build-portable-package failed."
+          }
+
+          $installerArgs = @(
+            "-ExecutionPolicy", "Bypass",
+            "-File", ".\scripts\build-installer.ps1",
+            "-SkipBuild"
+          )
+          & powershell @installerArgs
+          if ($LASTEXITCODE -ne 0) {
+            throw "build-installer failed."
+          }
+
           $args = @(
             "-ExecutionPolicy", "Bypass",
             "-File", ".\scripts\publish-release.ps1",
-            "-Upload"
+            "-Upload",
+            "-SkipBuild"
           )
 
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
