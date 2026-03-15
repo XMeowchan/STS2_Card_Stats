@@ -59,6 +59,11 @@ Copy-Item (Join-Path $projectRoot "mod_manifest.json") (Join-Path $stagedModDir 
 Write-EffectiveModConfig -SourcePath (Join-Path $projectRoot "config.json") -DestinationPath (Join-Path $stagedModDir "config.json") -RemoteDataUrl $RemoteDataUrl
 Copy-Item (Join-Path $projectRoot "sample_data\cards.sample.json") (Join-Path $stagedModDir "cards.sample.json") -Force
 
+$repairDir = Join-Path $stagedModDir "_repair"
+New-Item -ItemType Directory -Force -Path $repairDir | Out-Null
+Copy-Item (Join-Path $PSScriptRoot "repair-local-mod-state.ps1") (Join-Path $repairDir "repair-local-mod-state.ps1") -Force
+Copy-Item (Join-Path $PSScriptRoot "Sts2InstallHelpers.ps1") (Join-Path $repairDir "Sts2InstallHelpers.ps1") -Force
+
 $bundledCandidates = @(
     (Join-Path $dataDir "cards.json"),
     (Join-Path $dataDir "cards.fallback.json"),

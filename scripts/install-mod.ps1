@@ -19,6 +19,7 @@ $targetModDir = Join-Path $modsRoot $ModId
 New-Item -ItemType Directory -Force -Path $targetModDir | Out-Null
 
 $transientPaths = @(
+    (Join-Path $targetModDir "_update_runtime"),
     (Join-Path $targetModDir "_sync_runtime"),
     (Join-Path $targetModDir "_collector")
 )

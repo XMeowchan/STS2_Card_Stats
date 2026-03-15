@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -25,7 +26,8 @@ internal sealed class ModAutoUpdater
     {
         _modDirectory = modDirectory ?? string.Empty;
         _config = config;
-        _runtimeDirectory = Path.Combine(_modDirectory, RuntimeDirectoryName);
+        _runtimeDirectory = ResolveRuntimeDirectory(_modDirectory);
+        CleanupLegacyRuntimeDirectory();
     }
 
     public void QueueCheck()
@@ -210,6 +212,85 @@ internal sealed class ModAutoUpdater
         }
 
         throw new DirectoryNotFoundException("Downloaded update package does not contain a valid mod payload.");
+    }
+
+    private static string ResolveRuntimeDirectory(string modDirectory)
+    {
+        string baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(baseDirectory))
+        {
+            baseDirectory = Path.GetTempPath();
+        }
+
+        return Path.Combine(baseDirectory, ModEntry.ModId, RuntimeDirectoryName, CreateRuntimeInstanceId(modDirectory));
+    }
+
+    private static string CreateRuntimeInstanceId(string modDirectory)
+    {
+        string normalizedPath = NormalizeDirectoryPath(modDirectory);
+        if (normalizedPath.Length == 0)
+        {
+            return "default";
+        }
+
+        byte[] hash = SHA256.HashData(Utf8NoBom.GetBytes(normalizedPath));
+        return Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
+    }
+
+    private static string NormalizeDirectoryPath(string directoryPath)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return Path.GetFullPath(directoryPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+        catch
+        {
+            return directoryPath.Trim()
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+    }
+
+    private void CleanupLegacyRuntimeDirectory()
+    {
+        if (string.IsNullOrWhiteSpace(_modDirectory))
+        {
+            return;
+        }
+
+        string legacyRuntimeDirectory = Path.Combine(_modDirectory, RuntimeDirectoryName);
+        if (string.Equals(
+                NormalizeDirectoryPath(legacyRuntimeDirectory),
+                NormalizeDirectoryPath(_runtimeDirectory),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        TryDeleteDirectory(legacyRuntimeDirectory, "legacy in-mod update runtime");
+    }
+
+    private static void TryDeleteDirectory(string directoryPath, string label)
+    {
+        if (!Directory.Exists(directoryPath))
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.Delete(directoryPath, recursive: true);
+            Log.Info($"HeyboxCardStatsOverlay: removed {label} at '{directoryPath}'.", 2);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"HeyboxCardStatsOverlay: failed to remove {label} at '{directoryPath}': {ex.Message}", 2);
+        }
     }
 
     private string EnsureApplyScript()
@@ -404,6 +485,20 @@ function Write-UpdateMarker {
     Set-Content -LiteralPath (Join-Path $DirectoryPath "last-applied-update.json") -Value $marker -Encoding UTF8
 }
 
+function Remove-TransientUpdateFiles {
+    param(
+        [Parameter(Mandatory)]
+        [string]$DirectoryPath
+    )
+
+    foreach ($childName in @("downloads", "staging")) {
+        $childPath = Join-Path $DirectoryPath $childName
+        if (Test-Path -LiteralPath $childPath) {
+            Remove-Item -LiteralPath $childPath -Recurse -Force
+        }
+    }
+}
+
 try {
     Wait-ForParentExit -PidToWait $ParentPid
     if (-not (Test-Path -LiteralPath $SourceDir)) {
@@ -412,6 +507,7 @@ try {
 
     Copy-UpdateFiles -FromDir $SourceDir -ToDir $TargetDir
     Write-UpdateMarker -DirectoryPath $RuntimeDir -VersionText $ExpectedVersion
+    Remove-TransientUpdateFiles -DirectoryPath $RuntimeDir
 
     $errorLogPath = Join-Path $RuntimeDir "update-error.log"
     if (Test-Path -LiteralPath $errorLogPath) {

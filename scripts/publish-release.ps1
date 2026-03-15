@@ -35,10 +35,10 @@ $content = @"
 
 ## Changes
 
-- Switch anonymous telemetry to `https://telemetry.xmeow.cn` first, with the old Cloudflare Worker kept as fallback.
-- Migrate legacy telemetry config forward automatically so existing installs can follow the new endpoint order.
-- Keep the GitHub Pages usage curve pipeline working against the new telemetry stats endpoint.
-- Continue storing anonymous telemetry state in LocalAppData and avoid duplicate counts from copied mod folders.
+- Stop leaving auto-update staging copies inside the mod folder, so the game no longer discovers duplicate same-name mods.
+- Clean up legacy `_update_runtime` state after update and during reinstall to keep the installed mod directory load-safe.
+- Bundle a local repair script that removes stale disabled-mod entries and duplicate backup folders from existing installs.
+- Keep the portable zip attached so players can recover broken local installs even before auto-update runs again.
 
 ## Assets
 

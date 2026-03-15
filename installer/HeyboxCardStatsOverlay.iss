@@ -3,7 +3,7 @@
 #endif
 
 #ifndef AppVersion
-  #define AppVersion "0.2.8"
+  #define AppVersion "0.2.9"
 #endif
 
 #ifndef ModId
@@ -39,6 +39,7 @@ Name: "chinesesimp"; MessagesFile: "compiler:Default.isl"
 Source: "{#PayloadDir}\{#ModId}\*"; DestDir: "{code:GetTargetModDir}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [InstallDelete]
+Type: filesandordirs; Name: "{code:GetTransientUpdateRuntimeDir}"
 Type: filesandordirs; Name: "{code:GetTransientSyncRuntimeDir}"
 Type: filesandordirs; Name: "{code:GetTransientCollectorDir}"
 
@@ -438,6 +439,11 @@ end;
 function GetTransientSyncRuntimeDir(Param: string): string;
 begin
   Result := PathJoin(GetTargetModDir(Param), '_sync_runtime');
+end;
+
+function GetTransientUpdateRuntimeDir(Param: string): string;
+begin
+  Result := PathJoin(GetTargetModDir(Param), '_update_runtime');
 end;
 
 function GetTransientCollectorDir(Param: string): string;
