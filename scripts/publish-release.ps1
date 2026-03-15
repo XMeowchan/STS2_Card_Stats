@@ -156,6 +156,61 @@ function Get-ReleaseApiBase {
     return "https://api.github.com/repos/$Repository/releases"
 }
 
+function Invoke-GitHubApiWithRetry {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Method,
+        [Parameter(Mandatory)]
+        [string]$Uri,
+        [Parameter(Mandatory)]
+        [hashtable]$Headers,
+        [AllowNull()]
+        [object]$Body,
+        [AllowNull()]
+        [string]$InFile,
+        [string]$ContentType,
+        [int]$MaxAttempts = 5,
+        [int]$DelaySeconds = 5
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            $params = @{
+                Method  = $Method
+                Uri     = $Uri
+                Headers = $Headers
+            }
+
+            if ($PSBoundParameters.ContainsKey("Body")) {
+                $params.Body = $Body
+            }
+
+            if ($PSBoundParameters.ContainsKey("InFile")) {
+                $params.InFile = $InFile
+            }
+
+            if ($PSBoundParameters.ContainsKey("ContentType") -and -not [string]::IsNullOrWhiteSpace($ContentType)) {
+                $params.ContentType = $ContentType
+            }
+
+            return Invoke-RestMethod @params
+        }
+        catch {
+            if ($attempt -eq $MaxAttempts) {
+                throw
+            }
+
+            $statusCode = $null
+            if ($_.Exception.Response) {
+                $statusCode = $_.Exception.Response.StatusCode.value__
+            }
+
+            Write-Host "GitHub API $Method $Uri failed on attempt $attempt/$MaxAttempts (status: $statusCode). Retrying in $DelaySeconds seconds..."
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+}
+
 function Get-ReleaseByTagViaApi {
     param(
         [Parameter(Mandatory)]
@@ -168,7 +223,7 @@ function Get-ReleaseByTagViaApi {
 
     $uri = "{0}/tags/{1}" -f (Get-ReleaseApiBase -Repository $Repository), $TagName
     try {
-        return Invoke-RestMethod -Method Get -Uri $uri -Headers (Get-ReleaseHeaders -Token $Token)
+        return Invoke-GitHubApiWithRetry -Method Get -Uri $uri -Headers (Get-ReleaseHeaders -Token $Token)
     }
     catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
@@ -205,7 +260,12 @@ function Ensure-ReleaseViaApi {
             prerelease = [bool]$IsPrerelease
         } | ConvertTo-Json -Depth 6
 
-        return Invoke-RestMethod -Method Patch -Uri ("{0}/{1}" -f (Get-ReleaseApiBase -Repository $Repository), $existing.id) -Headers $headers -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -ContentType "application/json; charset=utf-8"
+        return Invoke-GitHubApiWithRetry `
+            -Method Patch `
+            -Uri ("{0}/{1}" -f (Get-ReleaseApiBase -Repository $Repository), $existing.id) `
+            -Headers $headers `
+            -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) `
+            -ContentType "application/json; charset=utf-8"
     }
 
     $createBody = @{
@@ -216,7 +276,12 @@ function Ensure-ReleaseViaApi {
         prerelease = [bool]$IsPrerelease
     } | ConvertTo-Json -Depth 6
 
-    return Invoke-RestMethod -Method Post -Uri (Get-ReleaseApiBase -Repository $Repository) -Headers $headers -Body ([System.Text.Encoding]::UTF8.GetBytes($createBody)) -ContentType "application/json; charset=utf-8"
+    return Invoke-GitHubApiWithRetry `
+        -Method Post `
+        -Uri (Get-ReleaseApiBase -Repository $Repository) `
+        -Headers $headers `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($createBody)) `
+        -ContentType "application/json; charset=utf-8"
 }
 
 function Remove-ExistingAssetsViaApi {
@@ -236,7 +301,7 @@ function Remove-ExistingAssetsViaApi {
             if ([string]::IsNullOrWhiteSpace($deleteUri)) {
                 throw "Release asset '$($asset.name)' does not include an API URL."
             }
-            Invoke-RestMethod -Method Delete -Uri $deleteUri -Headers $headers | Out-Null
+            Invoke-GitHubApiWithRetry -Method Delete -Uri $deleteUri -Headers $headers | Out-Null
         }
     }
 }
@@ -256,7 +321,12 @@ function Upload-AssetsViaApi {
     foreach ($assetPath in $AssetPaths) {
         $assetName = Split-Path $assetPath -Leaf
         $uploadUri = "{0}?name={1}" -f $uploadBase, [System.Uri]::EscapeDataString($assetName)
-        Invoke-RestMethod -Method Post -Uri $uploadUri -Headers $headers -InFile $assetPath -ContentType "application/octet-stream" | Out-Null
+        Invoke-GitHubApiWithRetry `
+            -Method Post `
+            -Uri $uploadUri `
+            -Headers $headers `
+            -InFile $assetPath `
+            -ContentType "application/octet-stream" | Out-Null
     }
 }
 
