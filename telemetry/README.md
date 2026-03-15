@@ -1,5 +1,7 @@
 # STS2 Card Stats Telemetry
 
+如果你的主要用户在国内，优先看 `../telemetry_edgeone/README.md` 里的 EdgeOne 方案，再把 Cloudflare Worker 留作回退。
+
 这个目录提供一个零额外费用优先的匿名统计后端：
 
 - Cloudflare Workers Free 接收 Mod 每日心跳

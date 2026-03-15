@@ -35,10 +35,10 @@ $content = @"
 
 ## Changes
 
-- Move anonymous telemetry state into LocalAppData instead of the mod folder.
-- Migrate existing telemetry_state.json forward automatically on first launch after update.
-- Reduce duplicate user counts caused by copying a fully used mod directory between machines.
-- Keep the existing auto-update and GitHub README usage curve pipeline intact.
+- Switch anonymous telemetry to `https://telemetry.xmeow.cn` first, with the old Cloudflare Worker kept as fallback.
+- Migrate legacy telemetry config forward automatically so existing installs can follow the new endpoint order.
+- Keep the GitHub Pages usage curve pipeline working against the new telemetry stats endpoint.
+- Continue storing anonymous telemetry state in LocalAppData and avoid duplicate counts from copied mod folders.
 
 ## Assets
 

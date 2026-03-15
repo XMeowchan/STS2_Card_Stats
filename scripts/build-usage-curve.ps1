@@ -1,6 +1,6 @@
 param(
     [string]$OutputDir,
-    [string]$StatsUrl = $(if ([string]::IsNullOrWhiteSpace($env:TELEMETRY_STATS_URL)) { "https://sts2-card-stats-telemetry.xmeowchan0415.workers.dev/v1/stats.json?days=365" } else { $env:TELEMETRY_STATS_URL })
+    [string]$StatsUrl = $(if ([string]::IsNullOrWhiteSpace($env:TELEMETRY_STATS_URL)) { "https://telemetry.xmeow.cn/v1/stats?days=365" } else { $env:TELEMETRY_STATS_URL })
 )
 
 $ErrorActionPreference = "Stop"

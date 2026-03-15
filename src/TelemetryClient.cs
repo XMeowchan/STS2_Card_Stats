@@ -36,7 +36,7 @@ internal sealed class TelemetryClient
     public void QueueDailyHeartbeat()
     {
         if (!_config.TelemetryEnabled
-            || string.IsNullOrWhiteSpace(_config.TelemetryEndpoint)
+            || _config.TelemetryEndpoints.Length == 0
             || string.IsNullOrWhiteSpace(_modDirectory))
         {
             return;
@@ -54,12 +54,6 @@ internal sealed class TelemetryClient
     {
         try
         {
-            if (!Uri.TryCreate(_config.TelemetryEndpoint, UriKind.Absolute, out Uri? endpoint))
-            {
-                MaybeLog("bad-endpoint", $"HeyboxCardStatsOverlay: telemetry endpoint is invalid: '{_config.TelemetryEndpoint}'.");
-                return;
-            }
-
             TelemetryState state = LoadOrCreateState();
             string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
             if (string.Equals(state.LastHeartbeatDay, today, StringComparison.Ordinal))
@@ -78,28 +72,44 @@ internal sealed class TelemetryClient
                 SentAt = DateTimeOffset.UtcNow.ToString("o")
             };
 
-            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(_config.TelemetryTimeoutSeconds));
-            using HttpRequestMessage request = new(HttpMethod.Post, endpoint);
-            request.Headers.UserAgent.ParseAdd($"HeyboxCardStatsOverlay/{payload.ModVersion}");
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(payload, JsonOptions),
-                Utf8NoBom,
-                "application/json");
-
-            using HttpResponseMessage response = await SharedHttpClient.SendAsync(
-                request,
-                HttpCompletionOption.ResponseHeadersRead,
-                timeout.Token).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            lock (_stateSync)
+            string payloadJson = JsonSerializer.Serialize(payload, JsonOptions);
+            foreach (string endpointText in _config.TelemetryEndpoints)
             {
-                state.LastHeartbeatDay = today;
-                state.LastSuccessAt = DateTimeOffset.UtcNow.ToString("o");
-                WriteState(state);
-            }
+                string attemptedAt = DateTimeOffset.UtcNow.ToString("o");
+                if (!Uri.TryCreate(endpointText, UriKind.Absolute, out Uri? endpoint))
+                {
+                    UpdateState(state, attemptedAt, endpointText, null, "Invalid telemetry endpoint.");
+                    MaybeLog("bad-endpoint", $"HeyboxCardStatsOverlay: telemetry endpoint is invalid: '{endpointText}'.");
+                    continue;
+                }
 
-            _lastLogKey = null;
+                try
+                {
+                    using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(_config.TelemetryTimeoutSeconds));
+                    using HttpRequestMessage request = new(HttpMethod.Post, endpoint);
+                    request.Headers.UserAgent.ParseAdd($"HeyboxCardStatsOverlay/{payload.ModVersion}");
+                    request.Content = new StringContent(payloadJson, Utf8NoBom, "application/json");
+
+                    using HttpResponseMessage response = await SharedHttpClient.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        timeout.Token).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+
+                    string succeededAt = DateTimeOffset.UtcNow.ToString("o");
+                    UpdateState(state, succeededAt, endpointText, today, string.Empty);
+                    _lastLogKey = null;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    string error = DescribeTelemetryFailure(ex);
+                    UpdateState(state, attemptedAt, endpointText, null, error);
+                    MaybeLog(
+                        $"heartbeat:{endpointText}:{error}",
+                        $"HeyboxCardStatsOverlay: telemetry heartbeat via '{endpointText}' failed: {error}");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -224,6 +234,39 @@ internal sealed class TelemetryClient
         return "0.0.0";
     }
 
+    private void UpdateState(TelemetryState state, string attemptedAt, string endpoint, string? heartbeatDay, string error)
+    {
+        lock (_stateSync)
+        {
+            state.LastAttemptAt = attemptedAt;
+            state.LastEndpoint = endpoint;
+            state.LastError = error;
+            if (!string.IsNullOrWhiteSpace(heartbeatDay))
+            {
+                state.LastHeartbeatDay = heartbeatDay;
+                state.LastSuccessAt = attemptedAt;
+            }
+
+            WriteState(state);
+        }
+    }
+
+    private string DescribeTelemetryFailure(Exception ex)
+    {
+        if (ex is OperationCanceledException)
+        {
+            return $"Timed out after {_config.TelemetryTimeoutSeconds} seconds.";
+        }
+
+        if (ex is HttpRequestException httpRequestException
+            && httpRequestException.StatusCode is not null)
+        {
+            return $"HTTP {(int)httpRequestException.StatusCode} {httpRequestException.StatusCode}.";
+        }
+
+        return ex.Message;
+    }
+
     private void MaybeLog(string key, string message)
     {
         if (_lastLogKey == key)
@@ -323,6 +366,15 @@ internal sealed class TelemetryClient
         [JsonPropertyName("last_heartbeat_day")]
         public string LastHeartbeatDay { get; set; } = string.Empty;
 
+        [JsonPropertyName("last_attempt_at")]
+        public string LastAttemptAt { get; set; } = string.Empty;
+
+        [JsonPropertyName("last_endpoint")]
+        public string LastEndpoint { get; set; } = string.Empty;
+
+        [JsonPropertyName("last_error")]
+        public string LastError { get; set; } = string.Empty;
+
         [JsonPropertyName("last_success_at")]
         public string LastSuccessAt { get; set; } = string.Empty;
 
@@ -340,6 +392,9 @@ internal sealed class TelemetryClient
             ClientId = (ClientId ?? string.Empty).Trim();
             CreatedAt = (CreatedAt ?? string.Empty).Trim();
             LastHeartbeatDay = (LastHeartbeatDay ?? string.Empty).Trim();
+            LastAttemptAt = (LastAttemptAt ?? string.Empty).Trim();
+            LastEndpoint = (LastEndpoint ?? string.Empty).Trim();
+            LastError = (LastError ?? string.Empty).Trim();
             LastSuccessAt = (LastSuccessAt ?? string.Empty).Trim();
             if (ClientId.Length < 16
                 || ClientId.Length > 80

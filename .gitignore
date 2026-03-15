@@ -10,3 +10,10 @@ telemetry/node_modules/
 telemetry/.wrangler/
 *.user
 *.suo
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+**/.edgeone/*
+.tef_dist/*
+  
