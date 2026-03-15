@@ -1,0 +1,149 @@
+name: Sync Card Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      sync_mode:
+        description: Collector mode to run
+        required: false
+        default: full
+        type: choice
+        options:
+          - full
+          - keepalive
+  schedule:
+    - cron: "45 2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-card-data
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: [self-hosted, windows, x64]
+    timeout-minutes: 45
+    env:
+      XHH_CDP_URL: ${{ vars.XHH_CDP_URL }}
+      XHH_CHROME_USER_DATA_DIR: ${{ vars.XHH_CHROME_USER_DATA_DIR }}
+      XHH_ALERT_WEBHOOK: ${{ secrets.XHH_ALERT_WEBHOOK }}
+    steps:
+      - name: Resolve sync mode
+        id: mode
+        shell: powershell
+        run: |
+          $mode = "full"
+
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace("${{ inputs.sync_mode }}")) {
+            $mode = "${{ inputs.sync_mode }}"
+          }
+
+          "mode=$mode" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Collector mode: $mode"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: collector/package-lock.json
+
+      - name: Install collector dependencies
+        shell: powershell
+        working-directory: collector
+        run: npm ci
+
+      - name: Ensure browser CDP endpoint
+        shell: powershell
+        run: |
+          $cdpUrl = if ([string]::IsNullOrWhiteSpace($env:XHH_CDP_URL)) { "http://127.0.0.1:9222" } else { $env:XHH_CDP_URL.Trim() }
+          $userDataDir = if ([string]::IsNullOrWhiteSpace($env:XHH_CHROME_USER_DATA_DIR)) { "C:\xhh-collector-profile" } else { $env:XHH_CHROME_USER_DATA_DIR.Trim() }
+          $probeUrl = "$cdpUrl/json/version"
+          $remoteDebuggingPort = 9222
+
+          try {
+            $remoteDebuggingPort = ([uri]$cdpUrl).Port
+          }
+          catch {
+          }
+
+          $ready = $false
+          try {
+            Invoke-WebRequest -Uri $probeUrl -UseBasicParsing -TimeoutSec 5 | Out-Null
+            $ready = $true
+            Write-Host "Reusing existing Chrome/Edge CDP endpoint: $cdpUrl"
+          }
+          catch {
+            Write-Host "CDP endpoint not ready. Launching collector browser profile..."
+            .\collector\tools\start-xhh-chrome.ps1 -UserDataDir $userDataDir -RemoteDebuggingPort $remoteDebuggingPort
+          }
+
+          if (-not $ready) {
+            for ($attempt = 1; $attempt -le 24; $attempt++) {
+              try {
+                Invoke-WebRequest -Uri $probeUrl -UseBasicParsing -TimeoutSec 5 | Out-Null
+                $ready = $true
+                break
+              }
+              catch {
+                Start-Sleep -Seconds 5
+              }
+            }
+          }
+
+          if (-not $ready) {
+            throw "Timed out waiting for Chrome/Edge CDP endpoint at $cdpUrl. Log into XiaoHeiHe in the collector browser profile first."
+          }
+
+      - name: Run collector
+        shell: powershell
+        working-directory: collector
+        run: |
+          $mode = "${{ steps.mode.outputs.mode }}"
+          $npmArgs = @("run")
+
+          if ($mode -eq "keepalive") {
+            $npmArgs += "xhh:keepalive"
+          }
+          else {
+            $npmArgs += "xhh:sync"
+          }
+
+          $npmArgs += @("--", "--output", "output/xhh/cards.snapshot.json")
+
+          if (-not [string]::IsNullOrWhiteSpace($env:XHH_ALERT_WEBHOOK)) {
+            $npmArgs += @("--alert-webhook", $env:XHH_ALERT_WEBHOOK.Trim())
+          }
+
+          npm @npmArgs
+
+      - name: Print collector manifest
+        if: always()
+        shell: powershell
+        run: |
+          $manifestPath = "collector\output\xhh\manifest.json"
+          if (Test-Path -LiteralPath $manifestPath) {
+            Get-Content -LiteralPath $manifestPath
+          }
+          else {
+            Write-Host "Collector manifest not found at $manifestPath"
+          }
+
+      - name: Configure git author
+        if: success() && steps.mode.outputs.mode == 'full'
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Import snapshot and push updates
+        if: success() && steps.mode.outputs.mode == 'full'
+        shell: powershell
+        run: .\scripts\update-card-data.ps1

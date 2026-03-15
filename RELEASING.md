@@ -77,6 +77,29 @@ Recommended runner setup:
 - Godot installed
 - runner labels including `self-hosted`, `windows`, and `x64`
 
+## Scheduled card data sync
+
+This repo also includes a scheduled sync workflow:
+
+- `.github/workflows/sync-card-data.yml`
+
+It uses a Windows self-hosted runner because the XiaoHeiHe collector attaches to a real logged-in Chrome/Edge profile over CDP.
+
+Recommended runner setup:
+
+- runner labels including `self-hosted`, `windows`, and `x64`
+- Chrome or Edge installed
+- a persistent browser profile already logged into XiaoHeiHe
+- the collector profile stored at `C:\xhh-collector-profile`, or override it with the `XHH_CHROME_USER_DATA_DIR` repository variable
+- optional `XHH_CDP_URL` repository variable if the browser exposes a non-default CDP endpoint
+- optional `XHH_ALERT_WEBHOOK` secret for login/failure alerts from the collector
+
+Default schedule:
+
+- every day at `02:45 UTC` (`10:45 UTC+8`) runs a full sync and pushes updated `data/` files when they change
+
+You can also trigger the workflow manually from the Actions tab and choose either `full` or `keepalive`.
+
 ## Auto-update behavior
 
 - Players must manually install the first version that includes the updater.
