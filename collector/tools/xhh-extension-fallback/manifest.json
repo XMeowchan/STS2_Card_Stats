@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "XHH STS2 Collector Fallback",
-  "description": "Fallback exporter for Slay the Spire 2 card stats using a real logged-in XiaoHeiHe browser session.",
+  "name": "STS2 Card Stats Collector Fallback",
+  "description": "Fallback exporter for Slay the Spire 2 card stats using a real logged-in browser session.",
   "version": "0.1.0",
   "permissions": [
     "storage",
@@ -30,6 +30,6 @@
   ],
   "options_page": "options.html",
   "action": {
-    "default_title": "Run XHH STS2 collector"
+    "default_title": "Run STS2 card stats collector"
   }
 }

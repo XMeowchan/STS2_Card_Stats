@@ -1,6 +1,6 @@
-# XHH STS2 Collector Fallback Extension
+# STS2 Card Stats Collector Fallback Extension
 
-这是 `tools/xhh-sts2-sync.mjs` 的二级 fallback：当 CDP 附着到真实 Chrome 仍被小黑盒打回 `relogin` 时，用扩展在页面环境里直接抓取数据。
+这是 `tools/xhh-sts2-sync.mjs` 的二级 fallback：当 CDP 附着到真实 Chrome 仍被目标站点打回 `relogin` 时，用扩展在页面环境里直接抓取数据。
 
 ## 加载方式
 
@@ -20,7 +20,7 @@
    ```
 
 2. 在扩展选项页保持默认上传地址 `http://127.0.0.1:8765/upload`
-3. 使用已登录小黑盒的真实浏览器，打开或允许扩展打开卡牌数据库页
+3. 使用已登录目标站点的真实浏览器，打开或允许扩展打开卡牌数据库页
 4. 点击扩展图标，扩展会抓取并上传 `cards.snapshot.json`
 
 ### 模式 B：直接下载 JSON
@@ -32,5 +32,5 @@
 ## 说明
 
 - 这个扩展不依赖 Playwright。
-- 它仍然依赖真实浏览器里的小黑盒登录态。
+- 它仍然依赖真实浏览器里的站点登录态。
 - 它只作为二级 fallback，不建议替代主采集器的自动调度链路。

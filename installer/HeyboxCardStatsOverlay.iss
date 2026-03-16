@@ -1,5 +1,5 @@
 #ifndef AppName
-  #define AppName "XiaoHeiHe Card Stats Overlay"
+  #define AppName "STS2 Card Stats Overlay"
 #endif
 
 #ifndef AppVersion

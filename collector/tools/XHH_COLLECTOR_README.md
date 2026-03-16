@@ -1,4 +1,4 @@
-# 小黑盒 STS2 采集器
+# STS2 卡牌统计采集器
 
 这套脚本把生产采集路径固定为：真实 Chrome/Edge + 专用资料目录 + CDP 附着。
 
@@ -17,7 +17,7 @@
    powershell -ExecutionPolicy Bypass -File tools/start-xhh-chrome.ps1
    ```
 
-2. 在弹出的真实 Chrome / Edge 窗口里手动登录一次小黑盒。
+2. 在弹出的真实 Chrome / Edge 窗口里手动登录一次目标数据站点。
 3. 确认 `https://www.xiaoheihe.cn/game/slay_the_spire/database_v2/card_database` 能正常打开。
 
 ## 常用命令
@@ -74,12 +74,12 @@ Windows 计划任务建议拆成两个任务：
 
 ## Fallback 扩展
 
-当 CDP 附着仍被小黑盒打回 `relogin` 时，改用 `tools/xhh-extension-fallback/`：
+当 CDP 附着仍被目标站点打回 `relogin` 时，改用 `tools/xhh-extension-fallback/`：
 
 1. `node tools/json-upload-receiver.mjs --keep-open`
 2. 打开 Chrome 扩展页，加载 `tools/xhh-extension-fallback/` 为未打包扩展
 3. 在扩展选项页配置上传地址（默认 `http://127.0.0.1:8765/upload`）
-4. 登录过小黑盒的真实浏览器中点击扩展图标，扩展会在页面环境里抓取并上传 / 下载 `cards.snapshot.json`
+4. 在已登录目标站点的真实浏览器中点击扩展图标，扩展会在页面环境里抓取并上传 / 下载 `cards.snapshot.json`
 
 ## 退出码
 

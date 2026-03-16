@@ -1,6 +1,6 @@
-# STS2 XiaoHeiHe Collector
+# STS2 Card Stats Collector
 
-生产化的《杀戮尖塔 2》小黑盒卡牌统计采集工具集。
+生产化的《杀戮尖塔 2》社区卡牌统计采集工具集。
 
 主链路采用：
 
@@ -31,7 +31,7 @@ npm install
 powershell -ExecutionPolicy Bypass -File tools/start-xhh-chrome.ps1
 ```
 
-3. 在该浏览器里手动登录一次小黑盒
+3. 在该浏览器里手动登录一次目标数据站点
 
 4. 先跑 keepalive
 
@@ -52,7 +52,6 @@ npm run xhh:sync
 - `tools/json-upload-receiver.mjs`
 - `tools/start-xhh-chrome.ps1`
 - `tools/xhh-extension-fallback/`
-- `STS2_XiaoHeiHe_Data_Research.md`
 - `AGENT_HANDOFF.md`
 
 更详细说明见 `tools/XHH_COLLECTOR_README.md`。

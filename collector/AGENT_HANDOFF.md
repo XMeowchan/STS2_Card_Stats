@@ -2,7 +2,7 @@
 
 ## 仓库目标
 
-这个仓库只保留“小黑盒 STS2 卡牌统计采集器”相关内容，不包含前端 demo 或其他无关实验文件。
+这个仓库只保留“STS2 卡牌统计采集器”相关内容，不包含前端 demo 或其他无关实验文件。
 
 ## 当前已完成
 
@@ -35,7 +35,7 @@
 
 ## 尚未完成
 
-- 在真实已登录小黑盒浏览器上完成 live 抓取验证
+- 在真实已登录目标站点的浏览器上完成 live 抓取验证
 - 记录 `ok / login / relogin` 的真实触发条件
 - 把报警接到真实 webhook 渠道
 - 决定主链路是否继续 CDP，还是切扩展 fallback
@@ -45,7 +45,7 @@
 1. `git clone`
 2. `npm install`
 3. `powershell -ExecutionPolicy Bypass -File tools/start-xhh-chrome.ps1`
-4. 在专用浏览器 profile 中手动登录一次小黑盒
+4. 在专用浏览器 profile 中手动登录一次目标数据站点
 5. `npm run xhh:keepalive`
 6. `npm run xhh:sync`
 7. 如果 CDP 仍失败，切到 `tools/xhh-extension-fallback/`
@@ -55,4 +55,3 @@
 - `README.md`
 - `tools/XHH_COLLECTOR_README.md`
 - `tools/xhh-extension-fallback/README.md`
-- `STS2_XiaoHeiHe_Data_Research.md`

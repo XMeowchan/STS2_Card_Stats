@@ -177,7 +177,7 @@ jobs:
           }
 
           if (-not $ready) {
-            throw "Timed out waiting for Chrome/Edge CDP endpoint at $cdpUrl. Log into XiaoHeiHe in the collector browser profile first."
+            throw "Timed out waiting for Chrome/Edge CDP endpoint at $cdpUrl. Log into the data source site in the collector browser profile first."
           }
 
           $usingDefaultCdp = if ([string]::IsNullOrWhiteSpace($env:XHH_CDP_URL)) { "true" } else { "false" }

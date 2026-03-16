@@ -22,14 +22,14 @@ Game mod dir: `D:\Steam\steamapps\common\Slay the Spire 2\mods\HeyboxCardStatsOv
 The syncer currently fails with:
 
 - `status: "login_required"`
-- `error_summary: "list sync requires an active XiaoHeiHe login in Edge."`
+- `error_summary: "list sync requires an active browser login in Edge."`
 
 Files showing this state:
 
 - `D:\dev\sts2-xiaoheihe-card-stats\data\sync_state.json`
 - `D:\Steam\steamapps\common\Slay the Spire 2\mods\HeyboxCardStatsOverlay\sync_state.json`
 
-This means the syncer reaches the XiaoHeiHe API path, but the browser context it launches does not have a usable logged-in XiaoHeiHe session.
+This means the syncer reaches the live data API path, but the browser context it launches does not have a usable logged-in session.
 
 ### 2. Local fallback data is only sample-level
 
@@ -51,7 +51,7 @@ Facts discovered during debugging:
 
 This strongly suggests that the current machine either:
 
-- does not have a valid XiaoHeiHe login in the Edge profile the syncer is using, or
+- does not have a valid login in the Edge profile the syncer is using, or
 - has login artifacts that are not fully portable to the snapshot flow, or
 - needs a dedicated persisted auth-state flow instead of copying a live browser profile.
 
@@ -63,9 +63,9 @@ Recommended follow-up design:
 
 1. Add a one-time auth bootstrap command, for example:
    - `save-auth-state.ps1`
-2. Launch Edge or Chromium once, let the user log into XiaoHeiHe interactively.
+2. Launch Edge or Chromium once, let the user log into the data site interactively.
 3. Save a stable Playwright storage state file, for example:
-   - `D:\dev\sts2-xiaoheihe-card-stats\data\xiaoheihe.auth.json`
+- `D:\dev\sts2-xiaoheihe-card-stats\data\collector.auth.json`
 4. Change `sync-cards.mjs` to prefer `storageState` from that saved auth file instead of trying to clone the active Edge profile every run.
 5. Keep the current fallback behavior if auth is missing or expired.
 
@@ -88,7 +88,7 @@ Current repository logic already tries multiple identifiers:
 - `name_en`
 - `name_cn`
 
-But this has not yet been validated against a full real `cards.json` from XiaoHeiHe.
+But this has not yet been validated against a full real `cards.json` from the live source.
 
 After the first successful sync, test at least these cards:
 
