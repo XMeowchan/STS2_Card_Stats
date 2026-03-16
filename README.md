@@ -1,4 +1,10 @@
 <p align="center">
+  <a href="README.md"><img alt="简体中文" src="https://img.shields.io/badge/Language-ZH-2ea043"></a>
+  <a href="README.en.md"><img alt="English" src="https://img.shields.io/badge/Language-EN-4c8eda"></a>
+  <a href="README.ja.md"><img alt="日本語" src="https://img.shields.io/badge/Language-JA-f4c542"></a>
+</p>
+
+<p align="center">
   <img src="pack_assets/HeyboxCardStatsOverlay/mod_image.png" alt="STS2 Card Stats Overlay" width="160">
 </p>
 
