@@ -138,6 +138,7 @@ jobs:
         run: npm ci
 
       - name: Ensure browser CDP endpoint
+        id: cdp
         shell: powershell
         run: |
           $cdpUrl = if ([string]::IsNullOrWhiteSpace($env:XHH_CDP_URL)) { "http://127.0.0.1:9222" } else { $env:XHH_CDP_URL.Trim() }
@@ -178,6 +179,29 @@ jobs:
           if (-not $ready) {
             throw "Timed out waiting for Chrome/Edge CDP endpoint at $cdpUrl. Log into XiaoHeiHe in the collector browser profile first."
           }
+
+          $usingDefaultCdp = if ([string]::IsNullOrWhiteSpace($env:XHH_CDP_URL)) { "true" } else { "false" }
+          $usingDefaultUserDataDir = if ([string]::IsNullOrWhiteSpace($env:XHH_CHROME_USER_DATA_DIR)) { "true" } else { "false" }
+
+          "cdp_url=$cdpUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "chrome_user_data_dir=$userDataDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "using_default_cdp=$usingDefaultCdp" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "using_default_user_data_dir=$usingDefaultUserDataDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Add collector runtime config to summary
+        if: always()
+        shell: powershell
+        run: |
+          @(
+            "## Collector runtime config",
+            "",
+            "| Key | Value |",
+            "| --- | --- |",
+            "| Resolved XHH_CDP_URL | `${{ steps.cdp.outputs.cdp_url }}` |",
+            "| Using default XHH_CDP_URL | `${{ steps.cdp.outputs.using_default_cdp }}` |",
+            "| Resolved XHH_CHROME_USER_DATA_DIR | `${{ steps.cdp.outputs.chrome_user_data_dir }}` |",
+            "| Using default XHH_CHROME_USER_DATA_DIR | `${{ steps.cdp.outputs.using_default_user_data_dir }}` |"
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
       - name: Run collector
         shell: powershell
