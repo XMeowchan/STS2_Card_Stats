@@ -16,13 +16,103 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: sync-card-data
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+      runner_ready: ${{ steps.runners.outputs.runner_ready }}
+      matching_count: ${{ steps.runners.outputs.matching_count }}
+      online_count: ${{ steps.runners.outputs.online_count }}
+    steps:
+      - name: Resolve sync mode
+        id: mode
+        shell: bash
+        run: |
+          mode="full"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.sync_mode }}" ]]; then
+            mode="${{ inputs.sync_mode }}"
+          fi
+
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "Collector mode: $mode"
+
+      - name: Check self-hosted runner availability
+        id: runners
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const requiredLabels = ['self-hosted', 'windows', 'x64'];
+            const runners = await github.paginate(
+              github.rest.actions.listSelfHostedRunnersForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              },
+            );
+
+            const matching = runners.filter((runner) => {
+              const labelSet = new Set((runner.labels || []).map((label) => String(label.name || '').toLowerCase()));
+              return requiredLabels.every((label) => labelSet.has(label));
+            });
+            const online = matching.filter((runner) => String(runner.status || '').toLowerCase() === 'online');
+
+            core.setOutput('matching_count', String(matching.length));
+            core.setOutput('online_count', String(online.length));
+            core.setOutput('runner_ready', online.length > 0 ? 'true' : 'false');
+
+            const summaryLines = [
+              `Required labels: ${requiredLabels.join(', ')}`,
+              `Matching self-hosted runners: ${matching.length}`,
+              `Online matching runners: ${online.length}`,
+            ];
+
+            if (matching.length > 0) {
+              summaryLines.push('');
+              summaryLines.push('Matching runners:');
+              for (const runner of matching) {
+                summaryLines.push(`- ${runner.name} (${runner.status}${runner.busy ? ', busy' : ''})`);
+              }
+            }
+
+            core.summary
+              .addHeading('Card data sync preflight')
+              .addRaw(summaryLines.join('\n'), true)
+              .addBreak();
+
+            if (online.length === 0) {
+              core.summary
+                .addQuote('No online self-hosted runner with labels self-hosted, windows, x64 is currently available. Start the runner on the collector machine first, then re-run this workflow.')
+                .addBreak();
+              core.warning('No online self-hosted runner with labels self-hosted, windows, x64 is currently available.');
+            } else {
+              core.summary
+                .addRaw('Runner preflight passed. The sync job can continue.', true)
+                .addBreak();
+            }
+
+            await core.summary.write();
+
+      - name: Fail fast when no runner is online
+        if: steps.runners.outputs.runner_ready != 'true'
+        shell: bash
+        run: |
+          echo "No online self-hosted runner with labels self-hosted, windows, x64 is available."
+          echo "Open the collector machine, make sure the GitHub Actions runner service is online, and trigger the workflow again."
+          exit 1
+
   sync:
+    needs: preflight
+    if: needs.preflight.outputs.runner_ready == 'true'
     runs-on: [self-hosted, windows, x64]
     timeout-minutes: 45
     env:
@@ -30,19 +120,6 @@ jobs:
       XHH_CHROME_USER_DATA_DIR: ${{ vars.XHH_CHROME_USER_DATA_DIR }}
       XHH_ALERT_WEBHOOK: ${{ secrets.XHH_ALERT_WEBHOOK }}
     steps:
-      - name: Resolve sync mode
-        id: mode
-        shell: powershell
-        run: |
-          $mode = "full"
-
-          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace("${{ inputs.sync_mode }}")) {
-            $mode = "${{ inputs.sync_mode }}"
-          }
-
-          "mode=$mode" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "Collector mode: $mode"
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -106,23 +183,20 @@ jobs:
         shell: powershell
         working-directory: collector
         run: |
-          $mode = "${{ steps.mode.outputs.mode }}"
-          $npmArgs = @("run")
+          $mode = "${{ needs.preflight.outputs.mode }}"
+          $collectorArgs = @("tools/xhh-sts2-sync.mjs")
 
           if ($mode -eq "keepalive") {
-            $npmArgs += "xhh:keepalive"
-          }
-          else {
-            $npmArgs += "xhh:sync"
+            $collectorArgs += "--keepalive-only"
           }
 
-          $npmArgs += @("--", "--output", "output/xhh/cards.snapshot.json")
+          $collectorArgs += @("--output", "output/xhh/cards.snapshot.json")
 
           if (-not [string]::IsNullOrWhiteSpace($env:XHH_ALERT_WEBHOOK)) {
-            $npmArgs += @("--alert-webhook", $env:XHH_ALERT_WEBHOOK.Trim())
+            $collectorArgs += @("--alert-webhook", $env:XHH_ALERT_WEBHOOK.Trim())
           }
 
-          npm @npmArgs
+          node @collectorArgs
 
       - name: Print collector manifest
         if: always()
@@ -137,13 +211,13 @@ jobs:
           }
 
       - name: Configure git author
-        if: success() && steps.mode.outputs.mode == 'full'
+        if: success() && needs.preflight.outputs.mode == 'full'
         shell: powershell
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Import snapshot and push updates
-        if: success() && steps.mode.outputs.mode == 'full'
+        if: success() && needs.preflight.outputs.mode == 'full'
         shell: powershell
         run: .\scripts\update-card-data.ps1
