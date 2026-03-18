@@ -13,7 +13,7 @@ on:
       - telemetry/**
       - scripts/build-usage-curve.ps1
       - scripts/build-pages-data.ps1
-      - mod_manifest.json
+      - HeyboxCardStatsOverlay.json
       - .github/workflows/deploy-pages.yml
 
 permissions:

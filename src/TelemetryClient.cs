@@ -216,8 +216,8 @@ internal sealed class TelemetryClient
     {
         try
         {
-            string manifestPath = Path.Combine(_modDirectory, "mod_manifest.json");
-            if (File.Exists(manifestPath))
+            string? manifestPath = ModLayout.FindManifestPath(_modDirectory);
+            if (!string.IsNullOrWhiteSpace(manifestPath) && File.Exists(manifestPath))
             {
                 string json = File.ReadAllText(manifestPath);
                 LocalManifest? manifest = JsonSerializer.Deserialize<LocalManifest>(json, JsonOptions);

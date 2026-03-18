@@ -9,7 +9,7 @@ The portable zip must be attached to the GitHub Release. Player-side auto-update
 
 ## Local release flow
 
-1. Update `mod_manifest.json` version.
+1. Update `HeyboxCardStatsOverlay.json` version.
 2. Build release artifacts:
 
 ```powershell
@@ -106,4 +106,4 @@ You can also trigger the workflow manually from the Actions tab and choose eithe
 - After that, the mod checks the latest GitHub Release at startup.
 - If a newer version exists, it downloads the portable zip in the background.
 - The new files are copied into the mod folder after the game exits.
-- The updater keeps the player's existing `config.json`.
+- The updater keeps the player's existing `config.cfg`.

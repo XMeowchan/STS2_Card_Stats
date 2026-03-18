@@ -103,8 +103,8 @@
    - `data/cards.json`
    - `data/cards.fallback.json`
    - `data/sync_state.json`
-4. 部署或安装时，这些文件会被复制到 Mod 目录。
-5. 游戏内 Mod 优先读本地 `cards.json`，必要时回退到 fallback 或 sample。
+4. 部署或安装时，会把最新 live 数据写成 Mod 目录里的 `cards.cache`，并把 fallback 打进 `.pck`。
+5. 游戏内 Mod 优先读本地 `cards.cache`，必要时回退到 bundled fallback 或 legacy sample。
 
 ### 6.2 游戏内展示链路
 
@@ -116,7 +116,7 @@
 
 ### 6.3 远程更新链路
 
-- Mod 支持从 `config.json` 指定的 `remote_data_url` 拉取远程 `cards.json`。
+- Mod 支持从 `config.cfg` 指定的 `remote_data_url` 拉取远程 `cards.json`。
 - 当前仓库默认配置指向 GitHub Pages：  
   `https://xmeowchan.github.io/STS2_Card_Stats/cards.json`
 - 远程刷新是后台增量优化，不应成为用户进入游戏的前置条件。
@@ -127,10 +127,10 @@
 
 `CardStatsRepository` 当前的加载优先级是：
 
-1. `cards.json`
-2. `cards.fallback.json`
+1. `cards.cache`
+2. 旧版本遗留的 `cards.json` / `cards.fallback.json`
 3. 打进 `.pck` 的 `res://HeyboxCardStatsOverlay/data/cards.fallback.json`
-4. `cards.sample.json`
+4. 旧版本遗留的 `cards.sample.json`
 
 结论：
 
@@ -196,12 +196,12 @@
 还有一个容易忽略的点：
 
 - `src/ModConfig.cs` 里的代码默认值中，`remote_data_enabled` 和 `mod_update_enabled` 默认是 `false`。
-- 但仓库根目录 `config.json` 里，这两个开关当前是 `true`。
+- 但仓库根目录 `config.json` 里，这两个开关当前是 `true`，打包后会写入玩家目录里的 `config.cfg`。
 
 这意味着：
 
-- 运行时表现更依赖“随包下发的 `config.json`”，而不是代码里的默认值。
-- 如果你漏拷贝了根目录 `config.json`，用户得到的是“远程数据关闭、自动更新关闭”的退化行为。
+- 运行时表现更依赖“随包下发的 `config.cfg`”，而不是代码里的默认值。
+- 如果你漏拷贝了根目录 `config.json` 并生成对应的 `config.cfg`，用户得到的是“远程数据关闭、自动更新关闭”的退化行为。
 
 ### 8.5 自动更新
 
@@ -223,7 +223,7 @@
   - release notes
 - 如果本机装了 `gh`，脚本会用 `gh release create / upload`。
 - 如果没装 `gh`，但环境里有 `GITHUB_TOKEN` / `GH_TOKEN` / `GITHUB_RELEASE_TOKEN`，脚本会直接走 GitHub REST API：
-  1. 读取 `mod_manifest.json` 里的版本号并生成 `v<version>` tag 名。
+  1. 读取 `HeyboxCardStatsOverlay.json` 里的版本号并生成 `v<version>` tag 名。
   2. `GET /repos/{owner}/{repo}/releases/tags/{tag}` 检查 release 是否已存在。
   3. 不存在则 `POST /repos/{owner}/{repo}/releases` 创建 release。
   4. 已存在则 `PATCH /repos/{owner}/{repo}/releases/{id}` 更新标题、正文、prerelease 状态。
@@ -236,14 +236,14 @@
 
 - 玩家第一次必须手动安装一个带更新器的版本；当前是 `0.2.3` 及以后。
 - Mod 启动时，`src/ModAutoUpdater.cs` 会：
-  1. 读取本地 `mod_manifest.json` 版本。
+  1. 读取本地 `HeyboxCardStatsOverlay.json` 版本。
   2. 请求 GitHub latest release。
   3. 从 release 资产里挑选 portable zip。
   4. 比较远端版本与本地版本。
 - 如果远端更高：
   1. 把 portable zip 下载到 Mod 目录下的 `_update_runtime/downloads/`。
   2. 解压到 `_update_runtime/staging/<version>/`。
-  3. 校验解压结果里是否存在有效的 `mod_manifest.json`、`HeyboxCardStatsOverlay.dll`、`HeyboxCardStatsOverlay.pck`。
+  3. 校验解压结果里是否存在有效的 `HeyboxCardStatsOverlay.json`、`HeyboxCardStatsOverlay.dll`、`HeyboxCardStatsOverlay.pck`。
   4. 生成并启动一个外部 PowerShell 应用脚本。
 - 之所以要起外部 PowerShell，而不是直接在游戏进程里覆盖，是因为：
   - 游戏运行时 DLL / PCK 正在被占用；
@@ -251,7 +251,7 @@
 - 外部 PowerShell 脚本会：
   1. 等待游戏主进程退出。
   2. 把 staging 目录内容复制回 Mod 安装目录。
-  3. 保留玩家现有的 `config.json`，避免把玩家自己的开关和参数覆盖掉。
+  3. 保留玩家现有的 `config.cfg`，避免把玩家自己的开关和参数覆盖掉。
   4. 记录 `_update_runtime/last-applied-update.json`。
   5. 如果失败，则写 `_update_runtime/update-error.log`。
 - 这条链路的验收标准不是“游戏运行中立刻变成新版本”，而是“本次运行完成下载，下次启动前已在退出阶段完成替换”。
@@ -260,7 +260,7 @@
 
 - 不要把 release 资产名改成完全不可识别的格式，至少要保留 portable zip 这一类稳定产物。
 - 不要只发 installer exe 而不发 portable zip。
-- 不要让更新器覆盖玩家本地 `config.json`。
+- 不要让更新器覆盖玩家本地 `config.cfg`。
 - 不要把“自动更新失败”设计成“Mod 无法启动”；失败时应该退化为继续跑本地已安装版本。
 
 ## 9. 已知坑

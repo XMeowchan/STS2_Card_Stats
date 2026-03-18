@@ -12,6 +12,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcDir = Join-Path $projectRoot "src"
 $dataDir = Join-Path $projectRoot "data"
 $modId = "HeyboxCardStatsOverlay"
+$manifestPath = Join-Path $projectRoot "$modId.json"
 $resolvedGameDir = Resolve-Sts2GameDir -RequestedPath $GameDir
 $modDir = Join-Path (Resolve-Sts2ModsRoot -GameDir $resolvedGameDir) $modId
 $dotnet = Resolve-DotnetExecutable
@@ -50,9 +51,8 @@ Set-PckCompatibilityHeader -Path $pckPath -EngineMinorVersion 5
 Copy-Item $dllPath (Join-Path $modDir "$modId.dll") -Force
 Copy-Item $pckPath (Join-Path $modDir "$modId.pck") -Force
 Set-PckCompatibilityHeader -Path (Join-Path $modDir "$modId.pck") -EngineMinorVersion 5
-Copy-Item (Join-Path $projectRoot "mod_manifest.json") (Join-Path $modDir "mod_manifest.json") -Force
-Write-EffectiveModConfig -SourcePath (Join-Path $projectRoot "config.json") -DestinationPath (Join-Path $modDir "config.json") -RemoteDataUrl $RemoteDataUrl
-Copy-Item (Join-Path $projectRoot "sample_data\cards.sample.json") (Join-Path $modDir "cards.sample.json") -Force
+Copy-Item $manifestPath (Join-Path $modDir "$modId.json") -Force
+Write-EffectiveModConfig -SourcePath (Join-Path $projectRoot "config.json") -DestinationPath (Join-Path $modDir "config.cfg") -RemoteDataUrl $RemoteDataUrl
 
 $bundledCandidates = @(
     (Join-Path $dataDir "cards.json"),
@@ -64,19 +64,19 @@ if (-not $bundledSource) {
     throw "No bundled card data source found."
 }
 
-Copy-Item $bundledSource (Join-Path $modDir "cards.fallback.json") -Force
-
 $liveDataPath = Join-Path $dataDir "cards.json"
-$deployedLivePath = Join-Path $modDir "cards.json"
+$deployedLivePath = Join-Path $modDir "cards.cache"
 if (Test-Path $liveDataPath) {
     Copy-Item $liveDataPath $deployedLivePath -Force
 } elseif (Test-Path $deployedLivePath) {
     Remove-Item $deployedLivePath -Force
 }
 
-$syncStatePath = Join-Path $dataDir "sync_state.json"
-if (Test-Path $syncStatePath) {
-    Copy-Item $syncStatePath (Join-Path $modDir "sync_state.json") -Force
+foreach ($legacyName in @("mod_manifest.json", "cards.json", "cards.fallback.json", "cards.sample.json", "sync_state.json")) {
+    $legacyPath = Join-Path $modDir $legacyName
+    if (Test-Path -LiteralPath $legacyPath) {
+        Remove-Item -LiteralPath $legacyPath -Force
+    }
 }
 
 if (Test-Path (Join-Path $modDir "_sync_runtime")) {

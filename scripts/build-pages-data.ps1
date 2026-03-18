@@ -6,7 +6,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$manifest = Get-Content (Join-Path $projectRoot "mod_manifest.json") | ConvertFrom-Json
+$manifest = Get-Content (Join-Path $projectRoot "HeyboxCardStatsOverlay.json") | ConvertFrom-Json
 $config = Get-Content (Join-Path $projectRoot "config.json") | ConvertFrom-Json
 $candidates = @(
     (Join-Path $projectRoot "data\cards.json"),
@@ -84,7 +84,7 @@ $translations = [ordered]@{
         sectionRepack2 = "你想让新下载安装的用户直接拿到最新离线数据。"
         sectionRepack3 = "数据结构、兼容策略或打包方式有变更。"
         sectionConfigTitle = "远程配置示例"
-        sectionConfigBody = "默认配置已经指向这个仓库的 Pages 地址。如果你要手动填写，可以在 <code>config.json</code> 里使用下面这组字段。"
+        sectionConfigBody = "默认配置已经指向这个仓库的 Pages 地址。如果你要手动填写，可以在 <code>config.cfg</code> 里使用下面这组字段。"
     }
     "en" = [ordered]@{
         pageTitle = "STS2 Card Data Update Guide"
@@ -113,7 +113,7 @@ $translations = [ordered]@{
         sectionRepack2 = "You want new downloads to include the latest offline data immediately."
         sectionRepack3 = "The data structure, compatibility strategy, or packaging flow changes."
         sectionConfigTitle = "Remote config example"
-        sectionConfigBody = "The default config already points to this repository's Pages URL. If you need to fill it manually, use these fields in <code>config.json</code>."
+        sectionConfigBody = "The default config already points to this repository's Pages URL. If you need to fill it manually, use these fields in <code>config.cfg</code>."
     }
     "ja" = [ordered]@{
         pageTitle = "STS2 カードデータ更新ガイド"
@@ -142,7 +142,7 @@ $translations = [ordered]@{
         sectionRepack2 = "新規ダウンロードで最新のオフラインデータをすぐ使えるようにしたい。"
         sectionRepack3 = "データ構造、互換方針、またはパッケージング手順が変わった。"
         sectionConfigTitle = "リモート設定例"
-        sectionConfigBody = "既定の設定はすでにこのリポジトリの Pages URL を指しています。手動で書く場合は、<code>config.json</code> に次の項目を使ってください。"
+        sectionConfigBody = "既定の設定はすでにこのリポジトリの Pages URL を指しています。手動で書く場合は、<code>config.cfg</code> に次の項目を使ってください。"
     }
 }
 

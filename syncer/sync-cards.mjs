@@ -275,10 +275,21 @@ async function writeJsonAtomic(targetPath, value) {
 
 async function mirrorProjectDataToMod(modDir) {
   await fs.mkdir(modDir, { recursive: true });
-  for (const name of ['cards.json', 'cards.fallback.json', 'sync_state.json']) {
-    const source = path.join(dataDir, name);
-    if (await exists(source)) {
-      await fs.copyFile(source, path.join(modDir, name));
+
+  const liveSource = await exists(cardsPath) ? cardsPath : (await exists(fallbackPath) ? fallbackPath : null);
+  if (liveSource) {
+    await fs.copyFile(liveSource, path.join(modDir, 'cards.cache'));
+  }
+
+  const hasNewManifest = await exists(path.join(modDir, 'HeyboxCardStatsOverlay.json'));
+  if (!hasNewManifest) {
+    return;
+  }
+
+  for (const legacyName of ['cards.json', 'cards.fallback.json', 'cards.sample.json', 'sync_state.json', 'mod_manifest.json']) {
+    const legacyPath = path.join(modDir, legacyName);
+    if (await exists(legacyPath)) {
+      await fs.rm(legacyPath, { force: true });
     }
   }
 }

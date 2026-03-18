@@ -22,7 +22,7 @@ internal sealed class ModConfig
     public bool HideFromMultiplayerModList { get; set; } = true;
 
     [JsonPropertyName("data_file")]
-    public string DataFile { get; set; } = "cards.json";
+    public string DataFile { get; set; } = ModLayout.DefaultDataFileName;
 
     [JsonPropertyName("label_language")]
     public string LabelLanguage { get; set; } = "auto";
@@ -114,8 +114,22 @@ internal sealed class ModConfig
 
         if (string.IsNullOrWhiteSpace(DataFile))
         {
-            DataFile = "cards.json";
+            DataFile = ModLayout.DefaultDataFileName;
             changed = true;
+        }
+        else
+        {
+            string normalizedDataFile = DataFile.Trim();
+            if (string.Equals(normalizedDataFile, ModLayout.LegacyDataFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedDataFile = ModLayout.DefaultDataFileName;
+            }
+
+            if (!string.Equals(DataFile, normalizedDataFile, StringComparison.Ordinal))
+            {
+                DataFile = normalizedDataFile;
+                changed = true;
+            }
         }
 
         if (string.IsNullOrWhiteSpace(LabelLanguage))

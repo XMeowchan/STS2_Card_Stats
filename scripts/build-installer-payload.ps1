@@ -12,6 +12,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $modId = "HeyboxCardStatsOverlay"
+$manifestPath = Join-Path $projectRoot "$modId.json"
 $dataDir = Join-Path $projectRoot "data"
 $buildOut = Join-Path $projectRoot "src\bin\$Configuration"
 $stagedModDir = Join-Path $PayloadRoot $modId
@@ -55,9 +56,8 @@ New-Item -ItemType Directory -Force -Path $stagedModDir | Out-Null
 Copy-Item (Join-Path $buildOut "$modId.dll") (Join-Path $stagedModDir "$modId.dll") -Force
 Copy-Item (Join-Path $buildOut "$modId.pck") (Join-Path $stagedModDir "$modId.pck") -Force
 Set-PckCompatibilityHeader -Path (Join-Path $stagedModDir "$modId.pck") -EngineMinorVersion 5
-Copy-Item (Join-Path $projectRoot "mod_manifest.json") (Join-Path $stagedModDir "mod_manifest.json") -Force
-Write-EffectiveModConfig -SourcePath (Join-Path $projectRoot "config.json") -DestinationPath (Join-Path $stagedModDir "config.json") -RemoteDataUrl $RemoteDataUrl
-Copy-Item (Join-Path $projectRoot "sample_data\cards.sample.json") (Join-Path $stagedModDir "cards.sample.json") -Force
+Copy-Item $manifestPath (Join-Path $stagedModDir "$modId.json") -Force
+Write-EffectiveModConfig -SourcePath (Join-Path $projectRoot "config.json") -DestinationPath (Join-Path $stagedModDir "config.cfg") -RemoteDataUrl $RemoteDataUrl
 
 $repairDir = Join-Path $stagedModDir "_repair"
 New-Item -ItemType Directory -Force -Path $repairDir | Out-Null
@@ -74,18 +74,11 @@ if (-not $bundledSource) {
     throw "No bundled card data source found."
 }
 
-Copy-Item $bundledSource (Join-Path $stagedModDir "cards.fallback.json") -Force
-
 $liveDataPath = Join-Path $dataDir "cards.json"
 if (Test-Path -LiteralPath $liveDataPath) {
-    Copy-Item $liveDataPath (Join-Path $stagedModDir "cards.json") -Force
+    Copy-Item $liveDataPath (Join-Path $stagedModDir "cards.cache") -Force
 } else {
-    Copy-Item $bundledSource (Join-Path $stagedModDir "cards.json") -Force
-}
-
-$syncStatePath = Join-Path $dataDir "sync_state.json"
-if (Test-Path -LiteralPath $syncStatePath) {
-    Copy-Item $syncStatePath (Join-Path $stagedModDir "sync_state.json") -Force
+    Copy-Item $bundledSource (Join-Path $stagedModDir "cards.cache") -Force
 }
 
 $stagedDllPath = Join-Path $stagedModDir "$modId.dll"

@@ -3,7 +3,7 @@
 #endif
 
 #ifndef AppVersion
-  #define AppVersion "0.2.9"
+  #define AppVersion "0.2.10"
 #endif
 
 #ifndef ModId
@@ -42,6 +42,11 @@ Source: "{#PayloadDir}\{#ModId}\*"; DestDir: "{code:GetTargetModDir}"; Flags: ig
 Type: filesandordirs; Name: "{code:GetTransientUpdateRuntimeDir}"
 Type: filesandordirs; Name: "{code:GetTransientSyncRuntimeDir}"
 Type: filesandordirs; Name: "{code:GetTransientCollectorDir}"
+Type: files; Name: "{code:GetTargetModDir}\mod_manifest.json"
+Type: files; Name: "{code:GetTargetModDir}\cards.json"
+Type: files; Name: "{code:GetTargetModDir}\cards.fallback.json"
+Type: files; Name: "{code:GetTargetModDir}\cards.sample.json"
+Type: files; Name: "{code:GetTargetModDir}\sync_state.json"
 
 [Code]
 var

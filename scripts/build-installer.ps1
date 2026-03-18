@@ -33,8 +33,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "build-installer-payload failed."
 }
 
-$manifest = Get-Content (Join-Path $projectRoot "mod_manifest.json") | ConvertFrom-Json
-$modId = $manifest.pck_name
+$manifest = Get-Content (Join-Path $projectRoot "HeyboxCardStatsOverlay.json") | ConvertFrom-Json
+$modId = $manifest.id
 if (-not $modId) {
     $modId = "HeyboxCardStatsOverlay"
 }
