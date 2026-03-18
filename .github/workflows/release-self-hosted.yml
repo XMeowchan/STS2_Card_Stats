@@ -25,9 +25,36 @@ jobs:
     runs-on: [self-hosted, windows, x64]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        shell: powershell
+        run: |
+          $workspace = $env:GITHUB_WORKSPACE
+          if (-not $workspace) {
+            throw "GITHUB_WORKSPACE is not set."
+          }
+
+          if (Test-Path -LiteralPath $workspace) {
+            Get-ChildItem -LiteralPath $workspace -Force | Remove-Item -Recurse -Force
+          }
+          else {
+            New-Item -ItemType Directory -Force -Path $workspace | Out-Null
+          }
+
+          $repoSshUrl = "git@github.com:${{ github.repository }}.git"
+          git clone --no-checkout $repoSshUrl $workspace
+          if ($LASTEXITCODE -ne 0) {
+            throw "git clone failed."
+          }
+
+          Set-Location $workspace
+          git fetch --depth 1 origin "${{ github.sha }}"
+          if ($LASTEXITCODE -ne 0) {
+            throw "git fetch failed."
+          }
+
+          git checkout --force FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) {
+            throw "git checkout failed."
+          }
 
       - name: Publish release
         shell: powershell
