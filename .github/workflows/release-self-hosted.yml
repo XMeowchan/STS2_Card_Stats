@@ -40,12 +40,16 @@ jobs:
           }
 
           $repoSshUrl = "git@github.com:${{ github.repository }}.git"
-          git clone --no-checkout $repoSshUrl $workspace
+          $env:GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=accept-new"
+          git init $workspace
           if ($LASTEXITCODE -ne 0) {
-            throw "git clone failed."
+            throw "git init failed."
           }
-
           Set-Location $workspace
+          git remote add origin $repoSshUrl
+          if ($LASTEXITCODE -ne 0) {
+            throw "git remote add failed."
+          }
           git fetch --depth 1 origin "${{ github.sha }}"
           if ($LASTEXITCODE -ne 0) {
             throw "git fetch failed."
