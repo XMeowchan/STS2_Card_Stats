@@ -35,6 +35,8 @@ $content = @"
 
 ## Changes
 
+- Support the latest Slay the Spire 2 mod manifest/package format with the new external manifest layout.
+- Refresh the bundled community card stats snapshot included in the installer and portable package.
 - Stop leaving auto-update staging copies inside the mod folder, so the game no longer discovers duplicate same-name mods.
 - Clean up legacy `_update_runtime` state after update and during reinstall to keep the installed mod directory load-safe.
 - Bundle a local repair script that removes stale disabled-mod entries and duplicate backup folders from existing installs.

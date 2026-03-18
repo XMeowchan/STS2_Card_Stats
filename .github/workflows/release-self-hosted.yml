@@ -25,52 +25,9 @@ jobs:
     runs-on: [self-hosted, windows, x64]
     steps:
       - name: Checkout
-        shell: powershell
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $workspace = $env:GITHUB_WORKSPACE
-          if (-not $workspace) {
-            throw "GITHUB_WORKSPACE is not set."
-          }
-
-          $runnerTemp = $env:RUNNER_TEMP
-          if (-not $runnerTemp) {
-            throw "RUNNER_TEMP is not set."
-          }
-
-          if (Test-Path -LiteralPath $workspace) {
-            Get-ChildItem -LiteralPath $workspace -Force | Remove-Item -Recurse -Force
-          }
-          else {
-            New-Item -ItemType Directory -Force -Path $workspace | Out-Null
-          }
-
-          $archivePath = Join-Path $runnerTemp "release-self-hosted-source.zip"
-          $extractPath = Join-Path $runnerTemp "release-self-hosted-source"
-          if (Test-Path -LiteralPath $archivePath) {
-            Remove-Item -LiteralPath $archivePath -Force
-          }
-          if (Test-Path -LiteralPath $extractPath) {
-            Remove-Item -LiteralPath $extractPath -Recurse -Force
-          }
-
-          $headers = @{
-            Authorization = "Bearer $env:GITHUB_TOKEN"
-            Accept = "application/vnd.github+json"
-            "X-GitHub-Api-Version" = "2022-11-28"
-            "User-Agent" = "self-hosted-runner"
-          }
-          $archiveUri = "https://api.github.com/repos/${{ github.repository }}/zipball/${{ github.sha }}"
-          Invoke-WebRequest -Uri $archiveUri -Headers $headers -OutFile $archivePath
-          Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath -Force
-
-          $sourceDir = Get-ChildItem -LiteralPath $extractPath -Directory | Select-Object -First 1
-          if (-not $sourceDir) {
-            throw "Failed to extract source archive."
-          }
-
-          Copy-Item (Join-Path $sourceDir.FullName "*") $workspace -Recurse -Force
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Publish release
         shell: powershell
