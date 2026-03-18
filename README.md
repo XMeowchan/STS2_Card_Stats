@@ -177,7 +177,7 @@ Slay the Spire 2\mods\HeyboxCardStatsOverlay
 - 安装器本身只负责定位《Slay the Spire 2》目录，并把 `HeyboxCardStatsOverlay` 文件复制到游戏的 `mods` 文件夹，不会安装系统服务、计划任务或开机自启。
 - 如果你不想运行安装器，可以直接使用 `portable.zip` 手动安装；手动安装完成后的目标目录就是 `Slay the Spire 2\mods\HeyboxCardStatsOverlay`。
 - Mod 默认会联网做三件事：拉取卡牌统计数据、检查 GitHub Releases 更新，以及发送一条匿名心跳用于统计活跃安装量。
-- 如果你想关闭联网行为，可以编辑 Mod 目录里的 `config.json`，把 `remote_data_enabled`、`mod_update_enabled`、`telemetry_enabled` 改成 `false`。
+- 如果你想关闭联网行为，可以编辑 Mod 目录里的 `config.cfg`，把 `remote_data_enabled`、`mod_update_enabled`、`telemetry_enabled` 改成 `false`。
 
 ## 怎么使用
 
@@ -226,4 +226,4 @@ Slay the Spire 2\mods\HeyboxCardStatsOverlay
 
 只会发送匿名安装 ID、Mod 版本、平台和上报时间，用来统计累计用户数和日活。
 
-如果你不想参与匿名统计，可以把 `config.json` 里的 `telemetry_enabled` 改成 `false`。
+如果你不想参与匿名统计，可以把 `config.cfg` 里的 `telemetry_enabled` 改成 `false`。

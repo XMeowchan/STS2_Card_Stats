@@ -150,7 +150,7 @@ Slay the Spire 2\mods\HeyboxCardStatsOverlay
 - インストーラーは Slay the Spire 2 のフォルダを探し、`HeyboxCardStatsOverlay` をゲームの `mods` フォルダへコピーするだけです。サービス、タスクスケジューラ、自動起動などは追加しません。
 - インストーラーを使いたくない場合は `portable.zip` で手動導入できます。
 - Mod はデフォルトで 3 つのネットワーク動作を行います: カード統計の取得、GitHub Releases の更新確認、アクティブインストール数のための匿名ハートビート送信。
-- ネットワーク動作を無効にしたい場合は、Mod フォルダ内の `config.json` を編集し、`remote_data_enabled`、`mod_update_enabled`、`telemetry_enabled` を `false` にしてください。
+- ネットワーク動作を無効にしたい場合は、Mod フォルダ内の `config.cfg` を編集し、`remote_data_enabled`、`mod_update_enabled`、`telemetry_enabled` を `false` にしてください。
 
 ## 使い方
 
@@ -199,4 +199,4 @@ Slay the Spire 2\mods\HeyboxCardStatsOverlay
 
 匿名インストール ID、Mod バージョン、プラットフォーム、送信時刻だけを送信し、累計ユーザー数と日次アクティブ数を集計します。
 
-匿名統計に参加したくない場合は、`config.json` の `telemetry_enabled` を `false` にしてください。
+匿名統計に参加したくない場合は、`config.cfg` の `telemetry_enabled` を `false` にしてください。

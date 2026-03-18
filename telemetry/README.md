@@ -53,7 +53,7 @@
 
 部署完后，把下面两个地方改掉：
 
-1. `config.json`
+1. `config.cfg`
 
    ```json
    {

@@ -112,8 +112,8 @@ internal sealed class ModAutoUpdater
 
     private LocalModManifest? ReadLocalManifest()
     {
-        string manifestPath = Path.Combine(_modDirectory, "mod_manifest.json");
-        if (!File.Exists(manifestPath))
+        string? manifestPath = ModLayout.FindManifestPath(_modDirectory);
+        if (string.IsNullOrWhiteSpace(manifestPath))
         {
             return null;
         }
@@ -194,20 +194,23 @@ internal sealed class ModAutoUpdater
 
     private static string ResolveStagedModDirectory(string stagingDirectory)
     {
-        string[] manifestPaths = Directory.GetFiles(stagingDirectory, "mod_manifest.json", SearchOption.AllDirectories);
-        foreach (string manifestPath in manifestPaths)
+        foreach (string manifestFileName in new[] { ModLayout.ManifestFileName, ModLayout.LegacyManifestFileName })
         {
-            string candidateDirectory = Path.GetDirectoryName(manifestPath) ?? string.Empty;
-            if (candidateDirectory.Length == 0)
+            string[] manifestPaths = Directory.GetFiles(stagingDirectory, manifestFileName, SearchOption.AllDirectories);
+            foreach (string manifestPath in manifestPaths)
             {
-                continue;
-            }
+                string candidateDirectory = Path.GetDirectoryName(manifestPath) ?? string.Empty;
+                if (candidateDirectory.Length == 0)
+                {
+                    continue;
+                }
 
-            string dllPath = Path.Combine(candidateDirectory, $"{ModEntry.ModId}.dll");
-            string pckPath = Path.Combine(candidateDirectory, $"{ModEntry.ModId}.pck");
-            if (File.Exists(dllPath) && File.Exists(pckPath))
-            {
-                return candidateDirectory;
+                string dllPath = Path.Combine(candidateDirectory, $"{ModEntry.ModId}.dll");
+                string pckPath = Path.Combine(candidateDirectory, $"{ModEntry.ModId}.pck");
+                if (File.Exists(dllPath) && File.Exists(pckPath))
+                {
+                    return candidateDirectory;
+                }
             }
         }
 
@@ -456,6 +459,7 @@ function Copy-UpdateFiles {
     )
 
     $preserveIfPresent = @(
+        "config.cfg",
         "config.json"
     )
 
@@ -467,6 +471,68 @@ function Copy-UpdateFiles {
         }
 
         Copy-Item -LiteralPath $item.FullName -Destination $ToDir -Recurse -Force
+    }
+}
+
+function Migrate-LegacyConfig {
+    param(
+        [Parameter(Mandatory)]
+        [string]$DirectoryPath
+    )
+
+    $legacyPath = Join-Path $DirectoryPath "config.json"
+    $currentPath = Join-Path $DirectoryPath "config.cfg"
+    if (-not (Test-Path -LiteralPath $legacyPath)) {
+        return
+    }
+
+    if (Test-Path -LiteralPath $currentPath) {
+        Copy-Item -LiteralPath $legacyPath -Destination $currentPath -Force
+        Remove-Item -LiteralPath $legacyPath -Force
+    }
+    else {
+        Move-Item -LiteralPath $legacyPath -Destination $currentPath -Force
+    }
+}
+
+function Migrate-LegacyCardCache {
+    param(
+        [Parameter(Mandatory)]
+        [string]$DirectoryPath
+    )
+
+    $legacyLivePath = Join-Path $DirectoryPath "cards.json"
+    $legacyFallbackPath = Join-Path $DirectoryPath "cards.fallback.json"
+    $currentPath = Join-Path $DirectoryPath "cards.cache"
+
+    if (Test-Path -LiteralPath $legacyLivePath) {
+        Copy-Item -LiteralPath $legacyLivePath -Destination $currentPath -Force
+        Remove-Item -LiteralPath $legacyLivePath -Force
+        return
+    }
+
+    if ((-not (Test-Path -LiteralPath $currentPath)) -and (Test-Path -LiteralPath $legacyFallbackPath)) {
+        Move-Item -LiteralPath $legacyFallbackPath -Destination $currentPath -Force
+    }
+}
+
+function Remove-LegacyFiles {
+    param(
+        [Parameter(Mandatory)]
+        [string]$DirectoryPath
+    )
+
+    foreach ($legacyName in @("mod_manifest.json", "cards.json", "cards.fallback.json", "cards.sample.json", "sync_state.json")) {
+        $legacyPath = Join-Path $DirectoryPath $legacyName
+        if (Test-Path -LiteralPath $legacyPath) {
+            Remove-Item -LiteralPath $legacyPath -Force
+        }
+    }
+
+    $legacyConfigPath = Join-Path $DirectoryPath "config.json"
+    $configPath = Join-Path $DirectoryPath "config.cfg"
+    if ((Test-Path -LiteralPath $configPath) -and (Test-Path -LiteralPath $legacyConfigPath)) {
+        Remove-Item -LiteralPath $legacyConfigPath -Force
     }
 }
 
@@ -505,7 +571,12 @@ try {
         throw "Update payload not found: $SourceDir"
     }
 
+    Migrate-LegacyConfig -DirectoryPath $TargetDir
+    Migrate-LegacyCardCache -DirectoryPath $TargetDir
     Copy-UpdateFiles -FromDir $SourceDir -ToDir $TargetDir
+    Migrate-LegacyConfig -DirectoryPath $TargetDir
+    Migrate-LegacyCardCache -DirectoryPath $TargetDir
+    Remove-LegacyFiles -DirectoryPath $TargetDir
     Write-UpdateMarker -DirectoryPath $RuntimeDir -VersionText $ExpectedVersion
     Remove-TransientUpdateFiles -DirectoryPath $RuntimeDir
 

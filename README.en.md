@@ -150,7 +150,7 @@ Slay the Spire 2\mods\HeyboxCardStatsOverlay
 - The installer only locates the Slay the Spire 2 folder and copies `HeyboxCardStatsOverlay` into the game's `mods` folder. It does not install services, scheduled tasks, or startup entries.
 - If you do not want to run the installer, you can use `portable.zip` and install manually.
 - By default, the mod uses the network to pull card stats, check GitHub Releases for updates, and send one anonymous heartbeat for active install counts.
-- To disable network behavior, edit `config.json` in the mod folder and set `remote_data_enabled`, `mod_update_enabled`, and `telemetry_enabled` to `false`.
+- To disable network behavior, edit `config.cfg` in the mod folder and set `remote_data_enabled`, `mod_update_enabled`, and `telemetry_enabled` to `false`.
 
 ## How to Use
 
@@ -199,4 +199,4 @@ Normal players do not. Install it and use it directly.
 
 It only sends an anonymous install ID, mod version, platform, and report time to count cumulative users and daily active installs.
 
-If you do not want to participate in anonymous telemetry, set `telemetry_enabled` to `false` in `config.json`.
+If you do not want to participate in anonymous telemetry, set `telemetry_enabled` to `false` in `config.cfg`.

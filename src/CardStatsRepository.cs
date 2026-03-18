@@ -79,7 +79,7 @@ internal sealed class CardStatsRepository
             (string path, string cacheKind) = ResolveDataPath();
             if (string.IsNullOrEmpty(path))
             {
-                MaybeLog("missing", "HeyboxCardStatsOverlay: no cards.json, cards.fallback.json, bundled fallback, or cards.sample.json found.");
+                MaybeLog("missing", $"HeyboxCardStatsOverlay: no '{_config.DataFile}', legacy json caches, bundled fallback, or sample cache found.");
                 _snapshot = null;
                 return null;
             }
@@ -162,8 +162,8 @@ internal sealed class CardStatsRepository
 
         _remoteRefreshInProgress = true;
         _nextRemoteRefreshUtc = now.AddMinutes(_config.RemoteRefreshMinutes);
-        string cachePath = Path.Combine(_modDirectory, _config.DataFile);
-        _ = Task.Run(() => RefreshRemoteDataAsync(cachePath));
+            string cachePath = ModLayout.GetDataPath(_modDirectory, _config.DataFile);
+            _ = Task.Run(() => RefreshRemoteDataAsync(cachePath));
     }
 
     private async Task RefreshRemoteDataAsync(string cachePath)
@@ -234,16 +234,22 @@ internal sealed class CardStatsRepository
 
     private (string path, string cacheKind) ResolveDataPath()
     {
-        string livePath = Path.Combine(_modDirectory, _config.DataFile);
+        string livePath = ModLayout.GetDataPath(_modDirectory, _config.DataFile);
         if (File.Exists(livePath))
         {
             return (livePath, "live");
         }
 
-        string fallbackPath = Path.Combine(_modDirectory, "cards.fallback.json");
+        string legacyLivePath = Path.Combine(_modDirectory, ModLayout.LegacyDataFileName);
+        if (!string.Equals(livePath, legacyLivePath, StringComparison.OrdinalIgnoreCase) && File.Exists(legacyLivePath))
+        {
+            return (legacyLivePath, "live-legacy");
+        }
+
+        string fallbackPath = Path.Combine(_modDirectory, ModLayout.LegacyFallbackDataFileName);
         if (File.Exists(fallbackPath))
         {
-            return (fallbackPath, "fallback");
+            return (fallbackPath, "fallback-legacy");
         }
 
         string bundledFallbackPath = $"res://{ModEntry.ModId}/data/cards.fallback.json";
@@ -252,10 +258,10 @@ internal sealed class CardStatsRepository
             return (bundledFallbackPath, "fallback");
         }
 
-        string samplePath = Path.Combine(_modDirectory, "cards.sample.json");
+        string samplePath = Path.Combine(_modDirectory, ModLayout.LegacySampleDataFileName);
         if (File.Exists(samplePath))
         {
-            return (samplePath, "sample");
+            return (samplePath, "sample-legacy");
         }
 
         return (string.Empty, string.Empty);

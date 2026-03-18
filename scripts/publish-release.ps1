@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
 function Get-Manifest {
-    return Get-Content (Join-Path $projectRoot "mod_manifest.json") -Raw | ConvertFrom-Json
+    return Get-Content (Join-Path $projectRoot "HeyboxCardStatsOverlay.json") -Raw | ConvertFrom-Json
 }
 
 function New-ReleaseNotes {
@@ -404,7 +404,7 @@ function Publish-ReleaseAssets {
 $manifest = Get-Manifest
 $version = "$($manifest.version)"
 if ([string]::IsNullOrWhiteSpace($version)) {
-    throw "mod_manifest.json does not contain a version."
+    throw "HeyboxCardStatsOverlay.json does not contain a version."
 }
 
 $tag = "v$version"
