@@ -35,6 +35,8 @@ $content = @"
 
 ## Changes
 
+- Add an installer toggle that can bootstrap empty modded save slots from vanilla saves after install.
+- Keep the bootstrap logic safe by only copying saves when the target modded profile does not already contain save files.
 - Support the latest Slay the Spire 2 mod manifest/package format with the new external manifest layout.
 - Refresh the bundled community card stats snapshot included in the installer and portable package.
 - Stop leaving auto-update staging copies inside the mod folder, so the game no longer discovers duplicate same-name mods.

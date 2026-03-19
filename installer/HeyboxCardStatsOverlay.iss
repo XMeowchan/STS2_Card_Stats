@@ -3,7 +3,7 @@
 #endif
 
 #ifndef AppVersion
-  #define AppVersion "0.2.13"
+  #define AppVersion "0.2.14"
 #endif
 
 #ifndef ModId
@@ -51,6 +51,7 @@ Type: files; Name: "{code:GetTargetModDir}\sync_state.json"
 [Code]
 var
   GameDirPage: TInputDirWizardPage;
+  SaveBootstrapPage: TInputOptionWizardPage;
   ResolvedGameDir: string;
 
 function NormalizeDir(const Value: string): string;
@@ -456,6 +457,75 @@ begin
   Result := PathJoin(GetTargetModDir(Param), '_collector');
 end;
 
+function GetRepairDir(Param: string): string;
+begin
+  Result := PathJoin(GetTargetModDir(Param), '_repair');
+end;
+
+function ShouldBootstrapSaves(): Boolean;
+begin
+  Result := Assigned(SaveBootstrapPage) and SaveBootstrapPage.Values[0];
+end;
+
+function GetPowerShellPath(): string;
+var
+  Candidate: string;
+begin
+  Candidate := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  if FileExists(Candidate) then
+  begin
+    Result := Candidate;
+    Exit;
+  end;
+
+  Result := 'powershell.exe';
+end;
+
+function RunOptionalSaveBootstrap(var StatusMessage: string): Boolean;
+var
+  ScriptPath: string;
+  SummaryPath: string;
+  Params: string;
+  ExitCode: Integer;
+begin
+  Result := True;
+  StatusMessage := '';
+  if not ShouldBootstrapSaves() then
+    Exit;
+
+  ScriptPath := PathJoin(GetRepairDir(''), 'bootstrap-modded-saves.ps1');
+  if not FileExists(ScriptPath) then
+  begin
+    Result := False;
+    StatusMessage := '可选存档同步脚本未找到。';
+    Exit;
+  end;
+
+  SummaryPath := ExpandConstant('{tmp}\{#ModId}-save-bootstrap-summary.json');
+  if FileExists(SummaryPath) then
+    DeleteFile(SummaryPath);
+
+  Params :=
+    '-NoProfile -ExecutionPolicy Bypass -File "' + ScriptPath + '" ' +
+    '-SummaryPath "' + SummaryPath + '" -Quiet';
+
+  if not Exec(GetPowerShellPath(), Params, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+  begin
+    Result := False;
+    StatusMessage := '无法启动可选的存档同步步骤。';
+    Exit;
+  end;
+
+  if ExitCode <> 0 then
+  begin
+    Result := False;
+    StatusMessage := '可选存档同步失败。你稍后可以手动运行 _repair\bootstrap-modded-saves.ps1。';
+    Exit;
+  end;
+
+  StatusMessage := '安装器已检查 modded 存档；如果某个档位为空，则已经自动复制对应的纯净版存档。';
+end;
+
 procedure InitializeWizard();
 var
   DetectedGameDir: string;
@@ -474,6 +544,17 @@ begin
   DetectedGameDir := DetectSts2GameDir();
   if DetectedGameDir <> '' then
     GameDirPage.Values[0] := DetectedGameDir;
+
+  SaveBootstrapPage :=
+    CreateInputOptionPage(
+      GameDirPage.ID,
+      '可选：初始化 Modded 存档',
+      '选择是否把纯净版存档复制到空的 Modded 档位',
+      '如果勾选，安装器会检查 STS2 的 modded 存档目录。当某个 modded 档位还没有存档文件时，会把对应纯净版档位里的存档复制过去一次；已经存在的 modded 存档不会被覆盖。',
+      False,
+      False);
+  SaveBootstrapPage.Add('如果 modded 档位为空，则自动复制对应的纯净版存档（推荐）');
+  SaveBootstrapPage.Values[0] := True;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -501,7 +582,22 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  SaveBootstrapMessage: string;
 begin
   if CurStep = ssPostInstall then
-    MsgBox('The mod has been installed successfully. Launch the game to use it.', mbInformation, MB_OK);
+  begin
+    if not RunOptionalSaveBootstrap(SaveBootstrapMessage) then
+    begin
+      if SaveBootstrapMessage = '' then
+        SaveBootstrapMessage := '可选存档同步步骤未完成。';
+      MsgBox('Mod 安装完成。' + #13#10#13#10 + SaveBootstrapMessage, mbInformation, MB_OK);
+      Exit;
+    end;
+
+    if SaveBootstrapMessage <> '' then
+      MsgBox('Mod 安装完成。' + #13#10#13#10 + SaveBootstrapMessage + #13#10 + '现在可以启动游戏了。', mbInformation, MB_OK)
+    else
+      MsgBox('Mod 安装完成，现在可以启动游戏了。', mbInformation, MB_OK);
+  end;
 end;

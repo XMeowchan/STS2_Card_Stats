@@ -422,6 +422,105 @@ function Copy-DirectoryContents {
     }
 }
 
+function Get-Sts2SteamStateRoot {
+    param(
+        [AllowNull()]
+        [string]$StateRoot
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($StateRoot)) {
+        return $StateRoot
+    }
+
+    return (Join-Path $env:APPDATA "SlayTheSpire2\steam")
+}
+
+function Get-Sts2SteamUserRoots {
+    param(
+        [AllowNull()]
+        [string]$StateRoot
+    )
+
+    $resolvedStateRoot = Get-Sts2SteamStateRoot -StateRoot $StateRoot
+    if ([string]::IsNullOrWhiteSpace($resolvedStateRoot) -or -not (Test-Path -LiteralPath $resolvedStateRoot)) {
+        return @()
+    }
+
+    return @(
+        Get-ChildItem -LiteralPath $resolvedStateRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^\d+$' } |
+        Sort-Object Name
+    )
+}
+
+function Test-DirectoryHasFiles {
+    param(
+        [AllowNull()]
+        [string]$Path
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+
+    return @(
+        Get-ChildItem -LiteralPath $Path -Recurse -File -Force -ErrorAction SilentlyContinue
+    ).Count -gt 0
+}
+
+function Copy-Sts2VanillaSavesToModded {
+    param(
+        [AllowNull()]
+        [string]$StateRoot
+    )
+
+    $resolvedStateRoot = Get-Sts2SteamStateRoot -StateRoot $StateRoot
+    $userRoots = Get-Sts2SteamUserRoots -StateRoot $resolvedStateRoot
+    $profiles = @("profile1", "profile2", "profile3")
+
+    $copiedProfiles = New-Object System.Collections.Generic.List[object]
+    $skippedExistingProfiles = New-Object System.Collections.Generic.List[object]
+    $sourceProfilesFound = 0
+
+    foreach ($userRoot in $userRoots) {
+        foreach ($profile in $profiles) {
+            $sourceSavesDir = Join-Path $userRoot.FullName "$profile\saves"
+            if (-not (Test-DirectoryHasFiles -Path $sourceSavesDir)) {
+                continue
+            }
+
+            $sourceProfilesFound += 1
+            $targetSavesDir = Join-Path $userRoot.FullName "modded\$profile\saves"
+            if (Test-DirectoryHasFiles -Path $targetSavesDir) {
+                $skippedExistingProfiles.Add([pscustomobject]@{
+                    UserId = $userRoot.Name
+                    Profile = $profile
+                    SourceDir = $sourceSavesDir
+                    TargetDir = $targetSavesDir
+                })
+                continue
+            }
+
+            New-Item -ItemType Directory -Force -Path $targetSavesDir | Out-Null
+            Copy-DirectoryContents -SourceDir $sourceSavesDir -DestinationDir $targetSavesDir
+            $copiedProfiles.Add([pscustomobject]@{
+                UserId = $userRoot.Name
+                Profile = $profile
+                SourceDir = $sourceSavesDir
+                TargetDir = $targetSavesDir
+            })
+        }
+    }
+
+    return [pscustomobject]@{
+        StateRoot = $resolvedStateRoot
+        UsersScanned = @($userRoots).Count
+        SourceProfilesFound = $sourceProfilesFound
+        CopiedProfiles = @($copiedProfiles)
+        SkippedExistingProfiles = @($skippedExistingProfiles)
+    }
+}
+
 function Write-EffectiveModConfig {
     param(
         [Parameter(Mandatory)]

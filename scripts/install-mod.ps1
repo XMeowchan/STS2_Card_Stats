@@ -1,7 +1,9 @@
 param(
     [string]$GameDir,
     [string]$PayloadDir = $(Join-Path (Split-Path -Parent $PSScriptRoot) "dist\installer\payload"),
-    [string]$ModId = "HeyboxCardStatsOverlay"
+    [string]$ModId = "HeyboxCardStatsOverlay",
+    [switch]$BootstrapModdedSaves,
+    [string]$StateRoot
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,6 +32,12 @@ foreach ($transientPath in $transientPaths) {
 }
 
 Copy-DirectoryContents -SourceDir $sourceModDir -DestinationDir $targetModDir
+
+if ($BootstrapModdedSaves) {
+    $saveBootstrap = Copy-Sts2VanillaSavesToModded -StateRoot $StateRoot
+    Write-Host "Copied vanilla saves into empty modded profiles: $($saveBootstrap.CopiedProfiles.Count)"
+    Write-Host "Skipped existing modded profiles: $($saveBootstrap.SkippedExistingProfiles.Count)"
+}
 
 Write-Host "Detected game dir: $resolvedGameDir"
 Write-Host "Installed $ModId to $targetModDir"
