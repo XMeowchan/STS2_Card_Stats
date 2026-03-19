@@ -478,8 +478,8 @@ function Copy-Sts2VanillaSavesToModded {
     $userRoots = Get-Sts2SteamUserRoots -StateRoot $resolvedStateRoot
     $profiles = @("profile1", "profile2", "profile3")
 
-    $copiedProfiles = New-Object System.Collections.Generic.List[object]
-    $skippedExistingProfiles = New-Object System.Collections.Generic.List[object]
+    $copiedProfiles = @()
+    $skippedExistingProfiles = @()
     $sourceProfilesFound = 0
 
     foreach ($userRoot in $userRoots) {
@@ -492,23 +492,23 @@ function Copy-Sts2VanillaSavesToModded {
             $sourceProfilesFound += 1
             $targetSavesDir = Join-Path $userRoot.FullName "modded\$profile\saves"
             if (Test-DirectoryHasFiles -Path $targetSavesDir) {
-                $skippedExistingProfiles.Add([pscustomobject]@{
+                $skippedExistingProfiles += [pscustomobject]@{
                     UserId = $userRoot.Name
                     Profile = $profile
                     SourceDir = $sourceSavesDir
                     TargetDir = $targetSavesDir
-                })
+                }
                 continue
             }
 
             New-Item -ItemType Directory -Force -Path $targetSavesDir | Out-Null
             Copy-DirectoryContents -SourceDir $sourceSavesDir -DestinationDir $targetSavesDir
-            $copiedProfiles.Add([pscustomobject]@{
+            $copiedProfiles += [pscustomobject]@{
                 UserId = $userRoot.Name
                 Profile = $profile
                 SourceDir = $sourceSavesDir
                 TargetDir = $targetSavesDir
-            })
+            }
         }
     }
 
@@ -516,8 +516,8 @@ function Copy-Sts2VanillaSavesToModded {
         StateRoot = $resolvedStateRoot
         UsersScanned = @($userRoots).Count
         SourceProfilesFound = $sourceProfilesFound
-        CopiedProfiles = @($copiedProfiles)
-        SkippedExistingProfiles = @($skippedExistingProfiles)
+        CopiedProfiles = $copiedProfiles
+        SkippedExistingProfiles = $skippedExistingProfiles
     }
 }
 

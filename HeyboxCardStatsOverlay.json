@@ -3,7 +3,7 @@
   "name": "Card Stats Insight Overlay",
   "author": "XMeow",
   "description": "在卡牌悬浮提示旁显示社区抓取率、胜率和样本量，帮助你少靠直觉、多看数据。\nShows community pick rate, win rate, and sample size beside hovered cards so you can draft with data, not just vibes.",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "has_pck": true,
   "has_dll": true,
   "affects_gameplay": false

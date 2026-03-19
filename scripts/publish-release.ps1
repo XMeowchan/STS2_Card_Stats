@@ -35,6 +35,7 @@ $content = @"
 
 ## Changes
 
+- Fix the optional installer save-bootstrap step so it no longer fails on completion when no modded saves need to be copied.
 - Add an installer toggle that can bootstrap empty modded save slots from vanilla saves after install.
 - Keep the bootstrap logic safe by only copying saves when the target modded profile does not already contain save files.
 - Support the latest Slay the Spire 2 mod manifest/package format with the new external manifest layout.
